@@ -161,7 +161,7 @@ async def debug_calculate_volume(geojson: GeoJSONInput):
         
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         return {
             "result_type": str(type(result)),
