@@ -4,7 +4,8 @@ from pathlib import Path
 # Add parent directory to path to allow 'backend' imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
@@ -12,18 +13,40 @@ import geopandas as gpd
 from shapely.geometry import shape
 import json
 import time
+import os
+from dotenv import load_dotenv
 
 from volume_calc import DikeModel  # Changed from backend.volume_calc
 
+load_dotenv()
+
+# API Key configuration
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise ValueError("API_KEY environment variable must be set")
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid API Key"
+        )
+    return api_key
+
 app = FastAPI(title="Verkenning 2.0 Backend", version="1.0.0")
 
-# Configure CORS for local development
+# CORS configuration - restricted origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5000"],  # Add your frontend URLs
+    allow_origins=[
+        "http://localhost:3001",
+        "https://portal.wsrl.nl"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 @app.get("/")
@@ -55,7 +78,10 @@ class VolumeCalculationResult(BaseModel):
     grid_points: Optional[int] = None
 
 @app.post("/api/calculate_design_volume", response_model=VolumeCalculationResult)
-async def calculate_design_volume(geojson: GeoJSONInput):
+async def calculate_design_volume(
+    geojson: GeoJSONInput,
+    api_key: str = Depends(verify_api_key)
+):
     """
     Calculate design volume from GeoJSON input using DikeModel.
     
@@ -151,7 +177,10 @@ async def calculate_design_volume(geojson: GeoJSONInput):
 
 # Debug endpoint to see raw calculation result
 @app.post("/api/debug_calculate_volume")
-async def debug_calculate_volume(geojson: GeoJSONInput):
+async def debug_calculate_volume(
+    geojson: GeoJSONInput,
+    api_key: str = Depends(verify_api_key)
+):
     """Debug endpoint to see raw calculation result"""
     try:
         features = []
@@ -161,7 +190,7 @@ async def debug_calculate_volume(geojson: GeoJSONInput):
         
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume()
+        result = dike_model.calculate_volume_matthias()
         
         return {
             "result_type": str(type(result)),
