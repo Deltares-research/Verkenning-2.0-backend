@@ -3,11 +3,13 @@ from pathlib import Path
 from pyproj import Transformer
 from shapely.geometry.linestring import LineString
 
-from backend.AHN5 import API_ahn
-from backend.AHN_raster_API import AHN4, AHN4_API
-from backend.volume_calc import DikeModel
+# from backend.AHN_raster_API import AHN4, AHN4_API
+# from backend.volume_calc import DikeModel
 import time
 import geopandas as gpd
+
+from source.volume_calc import DikeModel
+
 xmin=182926.38
 xmax=183419.62
 ymin=430891.89
@@ -35,14 +37,6 @@ ls_wgs = gdf.geometry.iloc[0]
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:28992", always_xy=True)  # Convert in RD coordinates
 linestring = LineString([transformer.transform(x, y) for x, y in ls_wgs.coords])
 
-
-test_api = AHN4()
-t1 = time.time()
-# l1, z1 = test_api.get_elevation_from_line(linestring, raster=None)
-t2 = time.time()
-print(f"Time taken: {t2 - t1} seconds")
-
-
 #
 # test_api2 =  AHN4Optimized()
 # t1 = time.time()
@@ -68,7 +62,7 @@ print(f"Time taken: {t2 - t1} seconds")
 # plt.legend()
 # plt.show()
 
-
+t2 = time.time()
 d = DikeModel(design_export_3d)
 d.calculate_volume_matthias()
 d.plot_existing_and_new_surface_plotly()

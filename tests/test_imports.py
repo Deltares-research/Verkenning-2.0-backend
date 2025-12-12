@@ -26,7 +26,7 @@ for package, alias in packages:
         print(f"✗ {package} NOT installed - run: pip install {package}")
 
 try:
-    from volume_calc import DikeModel
+    from source.volume_calc import DikeModel
     print("\n✓ DikeModel can be imported")
 except ValueError as e:
     print(f"\n✗ DikeModel import failed with ValueError: {e}")

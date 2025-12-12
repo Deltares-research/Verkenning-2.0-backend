@@ -3,7 +3,7 @@ import pytest
 
 # Try to import, but allow tests to run even if volume_calc has issues
 try:
-    from main import app
+    from source.main import app
     VOLUME_CALC_AVAILABLE = True
 except ValueError as e:
     if "mutable default" in str(e):
