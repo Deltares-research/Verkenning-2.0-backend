@@ -10,11 +10,15 @@ import geopandas as gpd
 
 from source.volume_calc import DikeModel
 
-xmin=182926.38
-xmax=183419.62
-ymin=430891.89
-ymax=431154.24
 
+
+import geopandas as gpd
+import fiona
+# import pyogrio
+
+print("GeoPandas:", gpd.__version__)
+print("Fiona:", fiona.__version__)
+# print("Pyogrio:", pyogrio.__version__)
 
 # api = API_ahn()
 # point = (xmin, ymin)
