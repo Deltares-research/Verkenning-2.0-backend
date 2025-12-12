@@ -1,10 +1,5 @@
 """Test AHN imports"""
 
-try:
-    from AHN5 import API_ahn
-    print("✓ AHN5.API_ahn imported successfully")
-except Exception as e:
-    print(f"✗ AHN5.API_ahn import failed: {e}")
 
 try:
     from AHN_raster_API import AHN4, AHN4_API
