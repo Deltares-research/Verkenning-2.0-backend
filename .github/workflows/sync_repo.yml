@@ -7,49 +7,50 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    environment: deploy  # DEPLOY_REPO_TOKEN must be set here
+    environment: deploy
 
     steps:
       # 1️⃣ Checkout source repo (workflow repo)
       - name: Checkout source repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 2️⃣ Checkout target repo
+      # 2️⃣ Checkout target repo directly in a temporary folder
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
           repository: vincentwolf89/demo_backend
           token: ${{ secrets.DEPLOY_REPO_TOKEN }}
-          path: target
+          path: target_repo
           fetch-depth: 0
-          persist-credentials: true  # Required so git push works
+          persist-credentials: true
 
       # 3️⃣ Ensure 'test' branch exists locally
       - name: Ensure 'test' branch exists
         run: |
-          cd target
+          cd target_repo
           git fetch origin
           if git show-ref --verify --quiet refs/remotes/origin/test; then
             git checkout -B test origin/test
           else
             git checkout -B test
-          fi
 
-      # 4️⃣ Clean target folder except .git
-      - name: Clean target folder
+      # 4️⃣ Clean target repo except .git
+      - name: Clean target repo folder
         run: |
-          cd target
+          cd target_repo
           find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
 
-      # 5️⃣ Copy files from source repo to target repo
-      - name: Sync files from source repo
+      # 5️⃣ Copy source repo contents into target repo root
+      - name: Copy source repo files
         run: |
-          rsync -av --exclude='.git' --exclude='.github' ../ ./target/
+          rsync -av --exclude='.git' --exclude='.github' ./ target_repo/
 
-      # 6️⃣ Commit and push to target repo 'test' branch
-      - name: Commit and push to test branch
+      # 6️⃣ Commit and push
+      - name: Commit and push
         run: |
-          cd target
+          cd target_repo
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add .
