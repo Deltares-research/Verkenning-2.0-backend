@@ -1,0 +1,79 @@
+name: ci-normalize-code
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AUTOFORMAT_COMMIT_MESSAGE: 'chore: autoformat isort & black'
+
+jobs:
+  normalize-code:
+    # Skip autoformat commits or bump commits
+    if: "${{ (!startsWith(github.event.head_commit.message, 'chore: autoformat isort & black')) && (!startsWith(github.event.head_commit.message, 'bump:')) }}"
+    name: "Normalize code with internal standards"
+    permissions:
+      contents: write    # needed to push back changes
+      pull-requests: write
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ['3.11']
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # ✅ 1. Checkout the repo (works for public or private repos)
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Use your PAT if you need to bypass branch protection; otherwise default GITHUB_TOKEN works fine
+          fetch-depth: 0
+
+      # ✅ 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # ✅ 3. Install Poetry (modern version, consistent with your test workflow)
+      - name: Set up Poetry
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: 2.2.1
+
+      # ✅ 4. Configure Poetry (optional, for cleaner env management)
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.in-project false
+          poetry config virtualenvs.path ~/.virtualenvs
+
+      # ✅ 5. Install only dev dependencies (for isort + black)
+      - name: Install dependencies
+        run: poetry install --only dev --no-interaction --no-root
+
+      # ✅ 6. Check formatting first
+      - name: Check formatting
+        id: check_formatting
+        continue-on-error: true
+        run: |
+          poetry run isort --check-only .
+          poetry run black --check .
+
+      # ✅ 7. Autoformat if check fails
+      - name: Autoformat code if needed
+        if: steps.check_formatting.outcome == 'failure'
+        run: |
+          poetry run isort .
+          poetry run black .
+
+      # ✅ 8. Commit and push changes
+      - name: Commit & push formatted code
+        if: steps.check_formatting.outcome == 'failure'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: ${{ env.AUTOFORMAT_COMMIT_MESSAGE }}
+          commit_user_name: github-actions
+          commit_user_email: github-actions@github.com
+          # Use your PAT if you need to bypass protection, else defaults to GITHUB_TOKEN
+          token: ${{ secrets.BYPASS_PROTECTED_BRANCHES_PAT || secrets.GITHUB_TOKEN }}

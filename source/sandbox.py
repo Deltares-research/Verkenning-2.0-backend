@@ -33,7 +33,8 @@ print("Fiona:", fiona.__version__)
 
 
 linestring_test = Path(r'C:\Users\hauth\repositories\Verkenning-2.0\backend\test_data\test_line_dike.shp')
-design_export_3d = gpd.read_file(Path(r'C:\Users\hauth\repositories\Verkenning-2.0\backend\test_data\ontwerp_export_3d(1).geojson'))
+design_export_3d = gpd.read_file(Path(r'C:\Users\hauth\repositories\Verkenning-2.0\backend\test_data\ontwerp_export_3d(3).geojson'))
+
 print(design_export_3d)
 
 gdf = gpd.read_file(linestring_test)
@@ -69,7 +70,7 @@ linestring = LineString([transformer.transform(x, y) for x, y in ls_wgs.coords])
 t2 = time.time()
 d = DikeModel(design_export_3d)
 d.calculate_volumes()
-d.plot_existing_and_new_surface_plotly()
+# d.plot_existing_and_new_surface_plotly()
 t3 = time.time()
 print(f"Total volume calculation time: {t3 - t2} seconds")
 
