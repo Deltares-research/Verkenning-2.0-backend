@@ -49,4 +49,6 @@ pip install pytest httpx
 
 # Run tests
 pytest
-```
+``
+
+## Sync
