@@ -7,7 +7,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    environment: deploy  # ensures DEPLOY_REPO_TOKEN is available
+    environment: deploy  # DEPLOY_REPO_TOKEN must be set in this environment
 
     steps:
       - name: Checkout source repo
@@ -16,40 +16,37 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          repository: vincentwolf89/demo_backend   # Target repo
+          repository: vincentwolf89/demo_backend
           token: ${{ secrets.DEPLOY_REPO_TOKEN }}
           path: target
-          ref: test
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Ensure 'test' branch exists
+      - name: Ensure 'test' branch exists locally
         run: |
           cd target
-          if ! git rev-parse --verify test; then
-            git checkout -b test
+          git fetch origin
+          if git show-ref --verify --quiet refs/remotes/origin/test; then
+            git checkout -B test origin/test
           else
-            git checkout test
+            git checkout -B test
           fi
 
-      - name: Clean target repo folder
+      - name: Clean target folder except .git
         run: |
-          rm -rf target/* target/.* 2>/dev/null || true
-          # keep .git folder intact
+          cd target
+          # Remove all files except .git folder
+          find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
 
-      - name: Sync files
+      - name: Sync files from source repo
         run: |
-          rsync -av \
-            --exclude='.git' \
-            --exclude='.github' \
-            ./ target/
+          rsync -av --exclude='.git' --exclude='.github' ../ ./target/
 
-      - name: Commit and push
+      - name: Commit and push to test
         run: |
           cd target
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
           git add .
           git commit -m "Sync from source repo" || echo "No changes"
           git push origin test --set-upstream
