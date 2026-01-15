@@ -7,7 +7,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    environment: deploy
+    environment: deploy  # ensures DEPLOY_REPO_TOKEN is available
 
     steps:
       - name: Checkout source repo
@@ -19,11 +19,27 @@ jobs:
           repository: vincentwolf89/demo_backend   # Target repo
           token: ${{ secrets.DEPLOY_REPO_TOKEN }}
           path: target
-          ref: test   # <-- checkout the 'test' branch
+          ref: test
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Ensure 'test' branch exists
+        run: |
+          cd target
+          if ! git rev-parse --verify test; then
+            git checkout -b test
+          else
+            git checkout test
+          fi
+
+      - name: Clean target repo folder
+        run: |
+          rm -rf target/* target/.* 2>/dev/null || true
+          # keep .git folder intact
 
       - name: Sync files
         run: |
-          rsync -av --delete \
+          rsync -av \
             --exclude='.git' \
             --exclude='.github' \
             ./ target/
@@ -36,4 +52,4 @@ jobs:
 
           git add .
           git commit -m "Sync from source repo" || echo "No changes"
-          git push origin test   # <-- push explicitly to 'test'
+          git push origin test --set-upstream
