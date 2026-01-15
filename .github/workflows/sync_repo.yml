@@ -7,22 +7,25 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    environment: deploy  # DEPLOY_REPO_TOKEN must be set in this environment
+    environment: deploy  # DEPLOY_REPO_TOKEN must be set here
 
     steps:
+      # 1️⃣ Checkout source repo (workflow repo)
       - name: Checkout source repo
         uses: actions/checkout@v4
 
+      # 2️⃣ Checkout target repo
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
           repository: vincentwolf89/demo_backend
           token: ${{ secrets.DEPLOY_REPO_TOKEN }}
           path: target
-          persist-credentials: false
           fetch-depth: 0
+          persist-credentials: true  # Required so git push works
 
-      - name: Ensure 'test' branch exists locally
+      # 3️⃣ Ensure 'test' branch exists locally
+      - name: Ensure 'test' branch exists
         run: |
           cd target
           git fetch origin
@@ -32,17 +35,19 @@ jobs:
             git checkout -B test
           fi
 
-      - name: Clean target folder except .git
+      # 4️⃣ Clean target folder except .git
+      - name: Clean target folder
         run: |
           cd target
-          # Remove all files except .git folder
           find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
 
+      # 5️⃣ Copy files from source repo to target repo
       - name: Sync files from source repo
         run: |
           rsync -av --exclude='.git' --exclude='.github' ../ ./target/
 
-      - name: Commit and push to test
+      # 6️⃣ Commit and push to target repo 'test' branch
+      - name: Commit and push to test branch
         run: |
           cd target
           git config user.name "github-actions"
