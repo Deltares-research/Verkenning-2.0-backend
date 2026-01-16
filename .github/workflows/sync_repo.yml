@@ -1,4 +1,4 @@
-name: Sync to DO repo
+name: Sync to DO repo 
 
 on:
   push:
