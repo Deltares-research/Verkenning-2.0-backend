@@ -5,7 +5,7 @@ import pytest
 from shapely.geometry import shape
 import json
 from pathlib import Path
-
+from app.structure_model import StructureModel
 
 #define test for reading the geojson with properties, and check if the properties are correct
 @pytest.mark.parametrize("filepath, expected_diepte, expected_type", [
@@ -17,13 +17,16 @@ def test_read_geojson_with_properties(filepath, expected_diepte, expected_type):
         assert row['diepte'] == expected_diepte
         assert row['type'] == expected_type
 
-def test_compute_cost_of_unanchored_sheet_pile_wall(filepath, expected_cost, expected_type):
+@pytest.mark.parametrize("filepath, expected_cost", [
+    (Path('tests/test_data/test_damwand_input_lines_with_properties.geojson'), 3122321.02),
+])
+def test_compute_cost_of_unanchored_sheet_pile_wall(filepath, expected_cost):
     # Load test geojson data
     filepath = Path('tests/test_data/test_damwand_input_lines_with_properties.geojson')
     gdf = gpd.read_file(filepath)
 
     # Create DikeModel instance
-    dike_model = DikeModel(gdf)
+    dike_model = StructureModel(gdf)
 
     # Compute cost
     total_cost = dike_model.compute_cost()
