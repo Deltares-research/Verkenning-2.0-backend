@@ -26,15 +26,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      # 3️⃣ Ensure 'test' branch exists locally
-      - name: Ensure 'test' branch exists
+      # 3️⃣ Ensure 'deploy' branch exists locally
+      - name: Ensure 'deploy' branch exists
         run: |
           cd target_repo
           git fetch origin
-          if git show-ref --verify --quiet refs/remotes/origin/test; then
-            git checkout -B test origin/test
+          if git show-ref --verify --quiet refs/remotes/origin/deploy; then
+            git checkout -B deploy origin/deploy
           else
-            git checkout -B test
+            git checkout -B deploy
           fi
 
       # 4️⃣ Clean target repo except .git
@@ -48,7 +48,7 @@ jobs:
         run: |
           rsync -av --exclude='.git' --exclude='.github' ./ target_repo/
 
-      # 6️⃣ Commit and push to target repo 'test' branch
+      # 6️⃣ Commit and push to target repo 'deploy' branch
       - name: Commit and push
         run: |
           cd target_repo
@@ -56,4 +56,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git add .
           git commit -m "Sync from source repo" || echo "No changes"
-          git push origin test --set-upstream
+          git push origin deploy --set-upstream
