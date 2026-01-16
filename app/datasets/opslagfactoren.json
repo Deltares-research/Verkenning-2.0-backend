@@ -1,0 +1,133 @@
+{
+  "Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen": [
+    {
+      "code": "Q-EKABKUKMAN",
+      "omschrijving": "Eenmalige-, algemene bouwplaats-, uitvoerings- en projectmanagementkosten",
+      "percentage": 20.0
+    },
+    {
+      "code": "Q-AK",
+      "omschrijving": "Algemene kosten (AK)",
+      "percentage": 7.2
+    },
+    {
+      "code": "Q-WR",
+      "omschrijving": "Winst & risico",
+      "percentage": 5.1
+    },
+    {
+      "code": "Q-ENGOG1",
+      "omschrijving": "Engineeringskosten opdrachtgever (EPK) - makkelijk",
+      "percentage": 8.0
+    },
+    {
+      "code": "Q-ENGOG2",
+      "omschrijving": "Engineeringskosten opdrachtgever (EPK) - gemiddeld",
+      "percentage": 10.0
+    },
+    {
+      "code": "Q-ENGOG3",
+      "omschrijving": "Engineeringskosten opdrachtgever (EPK) - moeilijk",
+      "percentage": 12.0
+    },
+    {
+      "code": "Q-ENGON1",
+      "omschrijving": "Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - makkelijk",
+      "percentage": 5.9
+    },
+    {
+      "code": "Q-ENGON2",
+      "omschrijving": "Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - gemiddeld",
+      "percentage": 8.9
+    },
+    {
+      "code": "Q-ENGON3",
+      "omschrijving": "Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - moeilijk",
+      "percentage": 11.9
+    },
+    {
+      "code": "Q-OND",
+      "omschrijving": "Onderzoeken (archeologie, explosieven, LNC, e.d.))",
+      "percentage": 1.0
+    },
+    {
+      "code": "Q-VERG",
+      "omschrijving": "Vergunningen, heffingen en verzekeringen",
+      "percentage": 3.0
+    },
+    {
+      "code": "Q-KL",
+      "omschrijving": "Kabels & leidingen",
+      "percentage": 1.0
+    },
+    {
+      "code": "Q-PLAN",
+      "omschrijving": "Planschade & inpassingsmaatregelen",
+      "percentage": 4.0
+    }
+  ],
+  "Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen": [
+    {
+      "code": "Q-GGMAKNTD",
+      "omschrijving": "GG - makkelijk: Nader te detailleren directe bouwkosten",
+      "percentage": 1.0
+    },
+    {
+      "code": "Q-GGMAKONV",
+      "omschrijving": "GG - makkelijk: Objectoverstijgende risicoreservering",
+      "percentage": 10.0
+    },
+    {
+      "code": "Q-GGGEMNTD",
+      "omschrijving": "GG - gemiddeld: Nader te detailleren directe bouwkosten",
+      "percentage": 3.0
+    },
+    {
+      "code": "Q-GGGEMONV",
+      "omschrijving": "GG - gemiddeld: Objectoverstijgende risicoreservering",
+      "percentage": 15.0
+    },
+    {
+      "code": "Q-GGMOENTD",
+      "omschrijving": "GG - moeilijk: Nader te detailleren directe bouwkosten",
+      "percentage": 5.0
+    },
+    {
+      "code": "Q-GGMOEONV",
+      "omschrijving": "GG - moeilijk: Objectoverstijgende risicoreservering",
+      "percentage": 20.0
+    }
+  ],
+  "Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen": [
+    {
+      "code": "Q-GCMAKNTD",
+      "omschrijving": "GC - makkelijk: Nader te detailleren directe bouwkosten",
+      "percentage": 5.0
+    },
+    {
+      "code": "Q-GCMAKONV",
+      "omschrijving": "GC - makkelijk: Objectoverstijgende risicoreservering",
+      "percentage": 20.0
+    },
+    {
+      "code": "Q-GCGEMNTD",
+      "omschrijving": "GC - gemiddeld: Nader te detailleren directe bouwkosten",
+      "percentage": 10.0
+    },
+    {
+      "code": "Q-GCGEMONV",
+      "omschrijving": "GC - gemiddeld: Objectoverstijgende risicoreservering",
+      "percentage": 25.0
+    },
+    {
+      "code": "Q-GCMOENTD",
+      "omschrijving": "GC - moeilijk: Nader te detailleren directe bouwkosten",
+      "percentage": 15.0
+    },
+    {
+      "code": "Q-GCMOEONV",
+      "omschrijving": "GC - moeilijk: Objectoverstijgende risicoreservering",
+      "percentage": 30.0
+    }
+  ]
+}
