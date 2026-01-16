@@ -48,8 +48,3 @@ def load_kosten_catalogus(eenheidsprijzen: str = "app/datasets/eenheidsprijzen.j
         categorieen[categorie] = kosten_items
     
     return KostenCatalogus(categorieen=categorieen)
-
-if __name__ == "__main__":
-    catalogus = load_kosten_catalogus()
-    for categorie, items in catalogus.categorieen.items():
-        print(f"Categorie: {categorie}, Aantal items: {len(items)}")
