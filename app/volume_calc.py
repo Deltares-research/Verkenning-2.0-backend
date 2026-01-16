@@ -101,7 +101,6 @@ class DikeModel:
         self.elevation = elev
         return elev
 
-
     def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
                                   THICKNESS_TOP_LAYER: float = 0.2,
                                   THICKNESS_CLAY_LAYER: float = 0.8) -> tuple[float, float, float]:
@@ -111,8 +110,6 @@ class DikeModel:
             - V3: volume of top layer fill (0.2m thick)
             - V4: volume of clay layer fill (0.8m thick)
             - V5: volume of sand layer fill (remaining volume below clay layer and above the current AHN surface)
-            - S1: the 3D surface area of the design surface
-
         """
 
         clay_layer_top_surface = []
@@ -124,21 +121,18 @@ class DikeModel:
             sand_layer_top_surface.append(
                 Polygon([(x, y, z - THICKNESS_TOP_LAYER - THICKNESS_CLAY_LAYER) for x, y, z in row.exterior.coords]))
 
-        results_design_ruimtebeslag = self.calculate_volume_below_surface(design_3d_surface)
-        volume_below_design_surface = results_design_ruimtebeslag.get('fill_volume')
+        volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
 
         V3 = volume_below_design_surface - volume_below_top_layer
         V4 = volume_below_top_layer - volume_below_clay_layer
         V5 = volume_below_clay_layer
-        S1 = results_design_ruimtebeslag.get('area')
 
-
-        return V3, V4, V5, S1
+        return V3, V4, V5
 
     def calculate_volume_v1b_v2b(self, design_3d_surface: gpd.GeoSeries, thickness_top_layer: float = 0.2,
-                                 thickness_clay_layer: float = 0.8) -> tuple[float, float]:
+                                 thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
         """
         Compute re-usable volumes:
             - V1b
@@ -214,18 +208,20 @@ class DikeModel:
         V4 = volumes['V4']
         V5 = volumes['V5']
         S0 = volumes['S0']
+        S5 = self.calculate_total_3d_surface_area().get('total_3d_area_m2')  # assume S3 = S4 = S5
 
-        groundwork_cost = ((V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
-                           (V5 + V1b) * Q_GV090 + V4 * Q_GV080 + V1b * Q_GV060 + (V3 - V1b) * Q_GV070) +
-                           S0 * (Q_AW101 + Q_AW020))
+        groundwork_cost = (V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
+                           (V5 + V1b) * Q_GV090 + V4 * Q_GV080 + V1b * Q_GV060 + (V3 - V1b) * Q_GV070) + S0 * (
+                                      Q_AW010 + Q_AW020) + S5 * (Q_GV100 + Q_GV110 + Q_GV120 - Q_AW030)
         road_removal_cost = road_area * ROAD_UNIT_COST
 
-        return {"Directe bouwkosten": {"Voorbereiding": None,
+        return {"Directe bouwkosten": {"Voorbereiding": None,  # TODO
                                        "Grondwerk": groundwork_cost,
                                        "Constructie": None,
-
                                        },
+
                 "Engineeringkosten": None,
+
                 "Vastgoedkosten": {"Panden": None,
                                    "Wegen": road_removal_cost,
                                    },
@@ -588,4 +584,3 @@ class DikeModel:
 
         print(f"Total 3D surface area above AHN: {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}
-

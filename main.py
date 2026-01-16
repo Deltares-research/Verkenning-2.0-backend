@@ -86,8 +86,7 @@ class DesignCalculationResult(BaseModel):
     ruimtebeslag_2d_points: List[Any]  # Points data for calculting ruimtebeslag in the frontend
 
 class DesignCostResult(BaseModel):
-    total_cost: float
-    breakdown: Dict[str, float]
+    cost_breakdown: Dict[str, float]
 
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
@@ -254,11 +253,10 @@ async def calculate_total_cost(
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
 
-        total_cost = dike_model.compute_cost(road_surface, ruimtebeslag_area)
+        cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area)
 
         return DesignCostResult(
-            total_cost=total_cost,
-            breakdown={}
+            breakdown=cost_breakdown
         )
 
     except Exception as e:
