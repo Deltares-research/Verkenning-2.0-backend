@@ -1,5 +1,5 @@
 {
-  "Damwandconstructies": [
+  "Damwandconstructies (ruw)": [
     {
       "code": "Q-GC1A.100",
       "omschrijving": "Leveren en aanbrengen (heien) damwand AZ13 inheidiepte 2m",
@@ -119,6 +119,62 @@
       "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 12 m)",
       "eenheid": "m¹",
       "prijs": 1050.25
+    }
+  ],
+  "Damwandconstructies (vereenvoudigd)": [
+    {
+      "code": "c_Onverankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Onverankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 136.94
+    },
+    {
+      "code": "z_Onverankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 107.31
+    },
+    {
+      "code": "c_Verankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Verankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 174.65
+    },
+    {
+      "code": "z_Verankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 1409.61
+    },
+    {
+      "code": "c_Heavescherm",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 8.67
+    },
+    {
+      "code": "d_Heavescherm",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 123.24
+    },
+    {
+      "code": "z_Heavescherm",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 96.58
     }
   ],
   "Wegen fietspaden en op-/afritten": [
