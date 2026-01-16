@@ -275,10 +275,20 @@ class AHN4_API:
         # perform fast bilinear interpolation (order=1)
         Z = map_coordinates(data, coords, order=1, mode='nearest')
 
-        # Convert distances
-        L = distances - correction
 
-        return L, Z
+        #make linestring with Z values
+        linestring_3d = geometry.LineString([(x, y, z_val) for (x, y), z_val in zip(zip(xs, ys), Z)])
+
+        
+        # #plot for testing purposes
+        # bbox_2 = (bbox[0], bbox[2], bbox[1], bbox[3])
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # plt.imshow(data, extent=bbox_2, origin='upper', cmap='terrain')
+        # #plot linestring on top of the raster with elevation in color
+        # #get right coordinates
+        # plt.scatter(xs,ys, c=np.array(Z), cmap='Oranges')
+        return linestring_3d
 
     # ---------------------------- Convenience API -----------------------------
     def set_resolution(self, res):
