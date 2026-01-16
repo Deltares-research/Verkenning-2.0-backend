@@ -48,3 +48,11 @@ def load_kosten_catalogus(eenheidsprijzen: str = "app/datasets/eenheidsprijzen.j
         categorieen[categorie] = kosten_items
     
     return KostenCatalogus(categorieen=categorieen)
+
+
+def get_price(catalogus: KostenCatalogus, code: str) -> float | None:
+    for items in catalogus.categorieen.values():
+        for item in items:
+            if item.code == code:
+                return item.prijs
+    return None

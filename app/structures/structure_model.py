@@ -1,10 +1,12 @@
 import geopandas as gpd
-from .AHN_raster_API import AHN4_API
-from .projection_transformation import transform_to_rd
+
+from app.unit_costs_and_surcharges import load_kosten_catalogus
+from ..AHN_raster_API import AHN4_API
+from ..projection_transformation import transform_to_rd
 import numpy as np
 
 class StructureModel:
-    valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm', 'Verticaal Zanddicht Geotextiel']
+    valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm']
 
     '''Model for calculating properties of structures. Structure should contain of one single line segment with properties.'''
     def __init__(self, location: gpd.GeoDataFrame):
@@ -18,7 +20,13 @@ class StructureModel:
         types = self.location['type'].unique()
         if len(types) > 1:
             raise ValueError("Meerdere constructietypes in 1 lijnsegment. Dit is niet toegestaan.")
+        
+        
         self.constructietype = types[0]
+
+        if self.constructietype not in self.valid_constructietypes:
+            raise ValueError(f"Invalid constructietype: {self.constructietype}. Must be one of {self.valid_constructietypes}.")
+        
         self.diepte = self.location['diepte'].iloc[0]
 
 
@@ -28,6 +36,8 @@ class StructureModel:
         self.determine_length_from_depth()
 
         self.get_screen_length()
+
+        self.cost_catalog = load_kosten_catalogus()
         
     def determine_length_from_depth(self, ahn_type = 'AHN4'):
         '''Determine the length of the structure based on depth and AHN data.'''
@@ -46,6 +56,13 @@ class StructureModel:
         Z = [self.elevation.coords[i][2] for i in range(len(self.elevation.coords))]
         if type == 'mean':
             top_level = np.mean(Z) 
-            self.screen_length = max(0, top_level - self.diepte)
+            self.wandlengte = max(0, top_level - self.diepte)
+        else:
+            raise ValueError("Niet geimplementeerd voor andere types dan 'mean'.")
+
+    def compute_directe_bouwkosten(self, c, d, z) -> float:
+        pass
+
+        
     
 
