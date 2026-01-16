@@ -10,13 +10,13 @@ jobs:
     environment: deploy
 
     steps:
-      # 1️⃣ Checkout source repo
+      # 1️⃣ Checkout source repo (this repo, main branch)
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Checkout target repo
+      # 2️⃣ Checkout target repo (DigitalOcean deploy repo)
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
@@ -26,14 +26,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      # 3️⃣ Create a fresh orphan deploy branch
+      # 3️⃣ Reset deploy branch completely (hard overwrite)
       - name: Reset deploy branch completely
         run: |
           cd target_repo
           git checkout --orphan deploy
           git rm -rf . || true
 
-      # 4️⃣ Copy source repo into target repo
+      # 4️⃣ Copy source repo contents into target repo
       - name: Copy source repo files
         run: |
           rsync -av \
@@ -41,12 +41,12 @@ jobs:
             --exclude='.github' \
             ./ target_repo/
 
-      # 5️⃣ Commit and force-push
+      # 5️⃣ Commit and force-push to deploy branch
       - name: Commit and force push
         run: |
           cd target_repo
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Deploy sync from main"
+          git commit -m "Deploy sync from main" || echo "No changes to commit"
           git push origin deploy --force
