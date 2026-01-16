@@ -20,6 +20,7 @@ from shapely.prepared import prep
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
+from .constants import *
 
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:28992", always_xy=True)
 transformer_rd_to_wm = Transformer.from_crs("EPSG:28992", "EPSG:3857", always_xy=True)
@@ -100,18 +101,6 @@ class DikeModel:
         self.elevation = elev
         return elev
 
-    def compute_volumes(self, current_elev, new_elev, cell_area=1.0):
-        """
-
-        :param current_elev: array of current elevations (AHN)
-        :param new_elev: array of new design elevations (from GIS polygons)
-        :param cell_area: grid size
-        :return:
-        """
-        dV = new_elev - current_elev
-        fill = np.sum(dV[dV > 0] * cell_area)
-        cut = np.sum(-dV[dV < 0] * cell_area)
-        return fill, cut
 
     def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
                                   THICKNESS_TOP_LAYER: float = 0.2,
@@ -122,6 +111,7 @@ class DikeModel:
             - V3: volume of top layer fill (0.2m thick)
             - V4: volume of clay layer fill (0.8m thick)
             - V5: volume of sand layer fill (remaining volume below clay layer and above the current AHN surface)
+            - S1: the 3D surface area of the design surface
 
         """
 
@@ -134,15 +124,18 @@ class DikeModel:
             sand_layer_top_surface.append(
                 Polygon([(x, y, z - THICKNESS_TOP_LAYER - THICKNESS_CLAY_LAYER) for x, y, z in row.exterior.coords]))
 
-        volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
+        results_design_ruimtebeslag = self.calculate_volume_below_surface(design_3d_surface)
+        volume_below_design_surface = results_design_ruimtebeslag.get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
 
         V3 = volume_below_design_surface - volume_below_top_layer
         V4 = volume_below_top_layer - volume_below_clay_layer
         V5 = volume_below_clay_layer
+        S1 = results_design_ruimtebeslag.get('area')
 
-        return V3, V4, V5
+
+        return V3, V4, V5, S1
 
     def calculate_volume_v1b_v2b(self, design_3d_surface: gpd.GeoSeries, thickness_top_layer: float = 0.2,
                                  thickness_clay_layer: float = 0.8) -> tuple[float, float]:
@@ -150,6 +143,7 @@ class DikeModel:
         Compute re-usable volumes:
             - V1b
             - V2b
+            - S0: surface area beyond the toe of the old dike
         Assumption is made to determine where the toe location of the old dike is located.
         The volume V1b and V2b are calculated based on the surface area of the current AHN surface, times the thickness of each layers.
         """
@@ -182,7 +176,8 @@ class DikeModel:
 
         V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
         V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
-        return V1b, V2b
+        S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
+        return V1b, V2b, S0
 
     def calculate_all_dike_volumes(self):
         THICKNESS_TOP_LAYER = 0.2  # meters
@@ -195,35 +190,46 @@ class DikeModel:
                                                     THICKNESS_CLAY_LAYER=THICKNESS_CLAY_LAYER)
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=THICKNESS_TOP_LAYER,
-                                                 thickness_clay_layer=THICKNESS_CLAY_LAYER)
+        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=THICKNESS_TOP_LAYER,
+                                                     thickness_clay_layer=THICKNESS_CLAY_LAYER)
 
         return {
             'V1b': V1b,
             'V2b': V2b,
             'V3': V3,
             'V4': V4,
-            'V5': V5
+            'V5': V5,
+            'S0': S0
         }
 
-    def compute_cost(self, nb_houses_intersected: int, road_area: int):
+    def compute_cost(self, nb_houses_intersected: int, road_area: int) -> dict:
 
         STARTING_COST = 4000
-        SURCHARGE_FACTOR = 1
 
         ##### Calculate filling volumes V3, V4, V5:
         volumes = self.calculate_all_dike_volumes()
+        V1b = volumes['V1b']
+        V2b = volumes['V2b']
         V3 = volumes['V3']
         V4 = volumes['V4']
         V5 = volumes['V5']
-        V = V3 + V4 + V5
+        S0 = volumes['S0']
 
-        UNIT_COST_ROAD_SURFACE = 50  # €/m²
-        UNIT_COST_GROUND_SURFACE = 100  # €/m²
+        groundwork_cost = ((V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
+                           (V5 + V1b) * Q_GV090 + V4 * Q_GV080 + V1b * Q_GV060 + (V3 - V1b) * Q_GV070) +
+                           S0 * (Q_AW101 + Q_AW020))
+        road_removal_cost = road_area * ROAD_UNIT_COST
 
-        cost = (road_area * UNIT_COST_ROAD_SURFACE) + (V * UNIT_COST_GROUND_SURFACE) + STARTING_COST
+        return {"Directe bouwkosten": {"Voorbereiding": None,
+                                       "Grondwerk": groundwork_cost,
+                                       "Constructie": None,
 
-        return cost
+                                       },
+                "Engineeringkosten": None,
+                "Vastgoedkosten": {"Panden": None,
+                                   "Wegen": road_removal_cost,
+                                   },
+                }
 
     def calculate_volume_matthias(self):
         """
@@ -583,165 +589,3 @@ class DikeModel:
         print(f"Total 3D surface area above AHN: {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}
 
-    def plot_existing_and_new_surface(
-            self,
-            title="Existing vs New Dike Surface"
-    ):
-        """
-        Plot both the existing (AHN) elevation surface and the new 3D design surface in matplotlib
-
-        Parameters
-        ----------
-        grid_points : Nx2 array
-            Grid points used for AHN sampling.
-        current_elev : array
-            Elevations from AHN corresponding to grid_points.
-        design_polygons : list(Polygon)
-            List of 3D shapely Polygons representing the new dike geometry.
-        title : str
-            Plot title.
-        """
-
-        # ----------------------------------------
-        # 1. Prepare AHN grid (irregular -> regular grid)
-        # ----------------------------------------
-
-        grid_points = self.grid_2d
-        current_elev = self.elevation
-        design_polygons = self.design_export_3d["geometry"].tolist()
-
-        X = grid_points[:, 0]
-        Y = grid_points[:, 1]
-        Z = current_elev
-
-        xi = np.linspace(X.min(), X.max(), 200)
-        yi = np.linspace(Y.min(), Y.max(), 200)
-        XI, YI = np.meshgrid(xi, yi)
-
-        ZI_ahn = griddata((X, Y), Z, (XI, YI), method='linear')
-
-        # ----------------------------------------
-        # 2. Extract all vertices of new 3D polygons
-        # ----------------------------------------
-        Xn, Yn, Zn = [], [], []
-
-        for poly in design_polygons:
-            for x, y, z in poly.exterior.coords:
-                Xn.append(x)
-                Yn.append(y)
-                Zn.append(z)
-
-        Xn = np.array(Xn)
-        Yn = np.array(Yn)
-        Zn = np.array(Zn)
-
-        # Interpolate new surface onto same grid for comparison
-        ZI_new = griddata((Xn, Yn), Zn, (XI, YI), method='linear')
-
-        # ----------------------------------------
-        # 3. Plot both surfaces
-        # ----------------------------------------
-        fig = plt.figure(figsize=(12, 10))
-        ax = fig.add_subplot(111, projection="3d")
-
-        surf1 = ax.plot_surface(
-            XI, YI, ZI_ahn,
-            # cmap="terrain",
-            alpha=0.7,
-            linewidth=0
-        )
-
-        surf2 = ax.plot_surface(
-            XI, YI, ZI_new,
-            # cmap="viridis",
-            alpha=0.5,
-            linewidth=0
-        )
-
-        ax.set_title(title)
-        ax.set_xlabel("X (RD)")
-        ax.set_ylabel("Y (RD)")
-        ax.set_zlabel("Elevation (m)")
-
-        plt.show()
-
-    def plot_existing_and_new_surface_plotly(
-            self,
-            grid_resolution=200,
-            title="Existing vs New Dike Surface"
-    ):
-        """
-        Dynamic 3D surface plot using Plotly for AHN and new design surfaces.
-        """
-
-        # -----------------------------
-        # 1. Prepare AHN surface
-        # -----------------------------
-        grid_points = self.grid_size
-        # current_elev = self.elevation
-        design_polygons = self.design_export_3d["geometry"].tolist()
-
-        X = grid_points[:, 0]
-        Y = grid_points[:, 1]
-        # Z = current_elev
-
-        xi = np.linspace(X.min(), X.max(), grid_resolution)
-        yi = np.linspace(Y.min(), Y.max(), grid_resolution)
-        XI, YI = np.meshgrid(xi, yi)
-
-        # ZI_ahn = griddata((X, Y), Z, (XI, YI), method='linear')
-
-        # -----------------------------
-        # 2. Prepare new design surface
-        # -----------------------------
-        Xn, Yn, Zn = [], [], []
-        for poly in design_polygons:
-            for x, y, z in poly.exterior.coords:
-                Xn.append(x)
-                Yn.append(y)
-                Zn.append(z)
-
-        Xn = np.array(Xn)
-        Yn = np.array(Yn)
-        Zn = np.array(Zn)
-
-        ZI_new = griddata((Xn, Yn), Zn, (XI, YI), method='linear')
-
-        # -----------------------------
-        # 3. Create Plotly surfaces
-        # -----------------------------
-        import plotly.graph_objects as go
-        fig = go.Figure()
-
-        # fig.add_trace(
-        #     go.Surface(
-        #         z=ZI_ahn,
-        #         x=XI,
-        #         y=YI,
-        #         opacity=0.8,
-        #         name="Existing AHN"
-        #     )
-        # )
-
-        fig.add_trace(
-            go.Surface(
-                z=ZI_new,
-                x=XI,
-                y=YI,
-                opacity=0.6,
-                name="New Dike Design"
-            )
-        )
-
-        fig.update_layout(
-            title=title,
-            scene=dict(
-                xaxis_title="X (RD)",
-                yaxis_title="Y (RD)",
-                zaxis_title="Elevation (m)",
-                aspectmode="auto"  # automatically scales axes
-            ),
-            autosize=True
-        )
-
-        fig.show()
