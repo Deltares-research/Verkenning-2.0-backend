@@ -198,7 +198,7 @@ class AHN4_API:
 
 
         #make linestring with Z values
-        linestring_3d = geometry.LineString([(x, y, z_val) for (x, y), z_val in zip(zip(xs, ys), Z)])
+        linestring_3d = LineString([(x, y, z_val) for (x, y), z_val in zip(zip(xs, ys), Z)])
 
 
         # #plot for testing purposes
