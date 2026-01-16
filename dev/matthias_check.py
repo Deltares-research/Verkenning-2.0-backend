@@ -229,10 +229,10 @@ print("\nInitializing DikeModel...")
 dike_model = DikeModel(gdf)
 
 print("\nCalculating volumes...")
-# dike_model.calculate_volume_matthias()
+dike_model.calculate_volume_matthias()
 
 print("\nCalculating volumes and direct cost...")
-costs = dike_model.compute_cost()
+costs = dike_model.compute_cost(10,10)
 print(costs)
 
 # dike_model.plot_existing_and_new_surface_plotly()

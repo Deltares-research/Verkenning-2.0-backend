@@ -17,7 +17,6 @@ from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
-from .AHN5 import API_ahn
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
