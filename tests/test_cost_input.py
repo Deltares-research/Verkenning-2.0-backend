@@ -1,6 +1,7 @@
 from app.datasets.unit_cost_to_json import csv_to_nested_json, parse_price, parse_percentage
 import json
 
+from app.unit_costs_and_surcharges import KostenCatalogus, KostenItem, load_kosten_catalogus
 
 import pytest
 
@@ -14,8 +15,6 @@ import pytest
 ])
 def test_parse_price(raw, expected):
     assert parse_price(raw) == expected
-
-
 
 
 def test_csv_to_nested_json_parses_correctly(tmp_path):
@@ -97,3 +96,30 @@ Q-GC1A.100,Damwand 2m,m¹,€ 414.87
     for category, items in catalog.items():
         assert len(items) > 0
 
+#tests for the dataclass values
+#verify it has the right number of categories and items
+def test_load_kosten_catalogus():
+    catalogus = load_kosten_catalogus()
+    assert isinstance(catalogus, KostenCatalogus)
+    assert "Damwandconstructies" in catalogus.categorieen
+    assert "Grondverzet" in catalogus.categorieen
+    assert len(catalogus.categorieen["Damwandconstructies"]) > 0
+    assert len(catalogus.categorieen["Grondverzet"]) > 0
+
+    # Check that items are of type KostenItem
+    for categorie, items in catalogus.categorieen.items():
+        for item in items:
+            assert isinstance(item, KostenItem)
+            assert isinstance(item.code, str)
+            assert isinstance(item.omschrijving, str)
+            assert isinstance(item.eenheid, str)
+            assert isinstance(item.prijs, float)
+
+def test_number_of_items_in_categories():
+    catalogus = load_kosten_catalogus()
+    damwand_items = catalogus.categorieen.get("Damwandconstructies", [])
+    grondverzet_items = catalogus.categorieen.get("Grondverzet", [])
+    opslagfactoren_constructies = catalogus.categorieen.get("Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen", [])
+    assert len(damwand_items) == 20  # Expecting 20 items in Damwandconstructies
+    assert len(grondverzet_items) == 8  # Expecting at least 8 items in Grondverzet
+    assert len(opslagfactoren_constructies) == 6  # Expecting 6 percentage items in opslagfactoren_constructies
