@@ -17,7 +17,6 @@ from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
-from .AHN5 import API_ahn
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
@@ -234,7 +233,7 @@ class DikeModel:
         ✅ FIXED: Now interpolates design heights at each grid point instead of using mean!
         """
 
-        return self.calculate_volume_below_surface(self.design_export_3d)
+        return self.calculate_volume_below_surface(self.design_export_3d.geometry)
 
     def calculate_volume_below_surface(self, surface: Union[gpd.GeoSeries, list[Polygon]]):
         """

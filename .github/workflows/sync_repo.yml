@@ -1,4 +1,4 @@
-name: Sync to DO repo 
+name: Sync to DO repo
 
 on:
   push:
@@ -7,16 +7,16 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    environment: deploy  # DEPLOY_REPO_TOKEN must be set here
+    environment: deploy
 
     steps:
-      # 1️⃣ Checkout source repo (workflow repo)
+      # 1️⃣ Checkout source repo (this repo, main branch)
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Checkout target repo into a temporary folder
+      # 2️⃣ Checkout target repo (DigitalOcean deploy repo)
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
@@ -26,34 +26,27 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      # 3️⃣ Ensure 'deploy' branch exists locally
-      - name: Ensure 'deploy' branch exists
+      # 3️⃣ Reset deploy branch completely (hard overwrite)
+      - name: Reset deploy branch completely
         run: |
           cd target_repo
-          git fetch origin
-          if git show-ref --verify --quiet refs/remotes/origin/deploy; then
-            git checkout -B deploy origin/deploy
-          else
-            git checkout -B deploy
-          fi
+          git checkout --orphan deploy
+          git rm -rf . || true
 
-      # 4️⃣ Clean target repo except .git
-      - name: Clean target repo folder
-        run: |
-          cd target_repo
-          find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
-
-      # 5️⃣ Copy source repo contents into target repo root
+      # 4️⃣ Copy source repo contents into target repo
       - name: Copy source repo files
         run: |
-          rsync -av --exclude='.git' --exclude='.github' ./ target_repo/
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            ./ target_repo/
 
-      # 6️⃣ Commit and push to target repo 'deploy' branch
-      - name: Commit and push
+      # 5️⃣ Commit and force-push to deploy branch
+      - name: Commit and force push
         run: |
           cd target_repo
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Sync from source repo" || echo "No changes"
-          git push origin deploy --set-upstream
+          git commit -m "Deploy sync from main" || echo "No changes to commit"
+          git push origin deploy --force
