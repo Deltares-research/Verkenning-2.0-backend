@@ -101,19 +101,6 @@ class DikeModel:
         self.elevation = elev
         return elev
 
-    def compute_volumes(self, current_elev, new_elev, cell_area=1.0):
-        """
-
-        :param current_elev: array of current elevations (AHN)
-        :param new_elev: array of new design elevations (from GIS polygons)
-        :param cell_area: grid size
-        :return:
-        """
-        dV = new_elev - current_elev
-        fill = np.sum(dV[dV > 0] * cell_area)
-        cut = np.sum(-dV[dV < 0] * cell_area)
-        return fill, cut
-
     def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
                                   THICKNESS_TOP_LAYER: float = 0.2,
                                   THICKNESS_CLAY_LAYER: float = 0.8) -> tuple[float, float, float]:
