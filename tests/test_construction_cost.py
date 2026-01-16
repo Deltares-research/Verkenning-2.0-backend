@@ -28,7 +28,7 @@ def test_compute_direct_cost_of_unanchored_sheet_pile_wall(filepath, expected_co
     filepath = Path('tests/test_data/test_damwand_input_lines_with_properties.geojson')
     gdf = gpd.read_file(filepath)
 
-    # Create DikeModel instance
+    # Create OnverankerdeDamwandModel instance
     onverankerd_model = OnverankerdeDamwandModel(gdf)
 
     # Compute cost

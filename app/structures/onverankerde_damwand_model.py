@@ -13,15 +13,31 @@ class OnverankerdeDamwandModel(StructureModel):
                                                                      d = get_price(self.cost_catalog, 'd_Onverankerd'),
                                                                     z = get_price(self.cost_catalog, 'z_Onverankerd'))
         
-        
+        '''Add nader te detailleren'''
 
-    def compute_directe_bouwkosten(self, c, d, z) -> float:
+        '''Add electrische uitvoering'''
+
+        '''add indirecte bouwkosten'''
+
+        '''add voorziene bouwkosten (niet bneoemd objectrisico)'''
+
+        '''add engineering'''
+
+        '''add overig bijkomend'''
+
+        '''add vastgoedkosten'''
+
+        '''add objectoverstijgende risicoreservering'''
+
+
+    def compute_benoemde_directe_bouwkosten(self, c, d, z) -> float:
         vaklengte = self.length
         wandlengte = self.wandlengte
         totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
         
-
-        self.cost_components['directe_bouwkosten'] = totale_directe_bouwkosten_per_meter * vaklengte
-
+        self.cost_components['benoemde_directe_bouwkosten'] = totale_directe_bouwkosten_per_meter * vaklengte
 
 
+
+
+    def compute_

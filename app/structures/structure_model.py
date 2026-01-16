@@ -9,12 +9,14 @@ class StructureModel:
     valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm']
 
     '''Model for calculating properties of structures. Structure should contain of one single line segment with properties.'''
-    def __init__(self, location: gpd.GeoDataFrame):
+    def __init__(self, location: gpd.GeoDataFrame, complexity: str = 'gemiddeld'):
         if len(location) != 1:
             raise ValueError("Location must contain exactly one line segment.")
         self.location = location
         # Transform coordinates to RD
         self.location = self.location.to_crs(epsg=28992)
+        
+        self.complexity = complexity
         
         #check if all types in location are the same
         types = self.location['type'].unique()
@@ -61,7 +63,7 @@ class StructureModel:
             raise ValueError("Niet geimplementeerd voor andere types dan 'mean'.")
 
     def compute_directe_bouwkosten(self, c, d, z) -> float:
-        pass
+        raise NotImplementedError("This method should be implemented in subclasses.")
 
         
     
