@@ -1,0 +1,332 @@
+{
+  "Damwandconstructies (ruw)": [
+    {
+      "code": "Q-GC1A.100",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ13 inheidiepte 2m",
+      "eenheid": "m¹",
+      "prijs": 414.87
+    },
+    {
+      "code": "Q-GC1A.110",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ13 inheidiepte 4m",
+      "eenheid": "m¹",
+      "prijs": 788.01
+    },
+    {
+      "code": "Q-GC1A.120",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ18 inheidiepte 6m",
+      "eenheid": "m¹",
+      "prijs": 1270.52
+    },
+    {
+      "code": "Q-GC1A.130",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ18 inheidiepte 8m",
+      "eenheid": "m¹",
+      "prijs": 1679.24
+    },
+    {
+      "code": "Q-GC1A.140",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ26 inheidiepte 10m",
+      "eenheid": "m¹",
+      "prijs": 2671.84
+    },
+    {
+      "code": "Q-GC1A.150",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ26 inheidiepte 12m",
+      "eenheid": "m¹",
+      "prijs": 3197.33
+    },
+    {
+      "code": "Q-GC1A.160",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ36 inheidiepte 15m",
+      "eenheid": "m¹",
+      "prijs": 4470.01
+    },
+    {
+      "code": "Q-GC1A.170",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ36 inheidiepte 20m",
+      "eenheid": "m¹",
+      "prijs": 5978.11
+    },
+    {
+      "code": "Q-GC1A.180",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ48 inheidiepte 25m",
+      "eenheid": "m¹",
+      "prijs": 10189.5
+    },
+    {
+      "code": "Q-GC1A.190",
+      "omschrijving": "Leveren en aanbrengen (heien) damwand AZ48 inheidiepte 30m",
+      "eenheid": "m¹",
+      "prijs": 12694.9
+    },
+    {
+      "code": "Q-GC1A.200",
+      "omschrijving": "Leveren en aanbrengen stalen gording aan damwand (UNP180)",
+      "eenheid": "m¹",
+      "prijs": 219.89
+    },
+    {
+      "code": "Q-GC1A.210",
+      "omschrijving": "Leveren en aanbrengen stalen gording aan damwand (UNP240)",
+      "eenheid": "m¹",
+      "prijs": 283.26
+    },
+    {
+      "code": "Q-GC1A.220",
+      "omschrijving": "Leveren en aanbrengen stalen gording aan damwand (UNP320)",
+      "eenheid": "m¹",
+      "prijs": 503.1
+    },
+    {
+      "code": "Q-GC1A.300",
+      "omschrijving": "Leveren en aanbrengen betonnen deklsoof (B=05 H=05m)",
+      "eenheid": "m¹",
+      "prijs": 422.48
+    },
+    {
+      "code": "Q-GC1A.400",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 2 m)",
+      "eenheid": "m¹",
+      "prijs": 673.42
+    },
+    {
+      "code": "Q-GC1A.410",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 4 m)",
+      "eenheid": "m¹",
+      "prijs": 747.25
+    },
+    {
+      "code": "Q-GC1A.420",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 6 m)",
+      "eenheid": "m¹",
+      "prijs": 822.49
+    },
+    {
+      "code": "Q-GC1A.430",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 8 m)",
+      "eenheid": "m¹",
+      "prijs": 894.88
+    },
+    {
+      "code": "Q-GC1A.440",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 10 m)",
+      "eenheid": "m¹",
+      "prijs": 975.01
+    },
+    {
+      "code": "Q-GC1A.450",
+      "omschrijving": "Leveren en aanbrengen groutankers (hoh 25m lang 12 m)",
+      "eenheid": "m¹",
+      "prijs": 1050.25
+    }
+  ],
+  "Damwandconstructies (vereenvoudigd)": [
+    {
+      "code": "c_Onverankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Onverankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 136.94
+    },
+    {
+      "code": "z_Onverankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 107.31
+    },
+    {
+      "code": "c_Verankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Verankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 174.65
+    },
+    {
+      "code": "z_Verankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 1409.61
+    },
+    {
+      "code": "c_Heavescherm",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 8.67
+    },
+    {
+      "code": "d_Heavescherm",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 123.24
+    },
+    {
+      "code": "z_Heavescherm",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 96.58
+    }
+  ],
+  "Wegen fietspaden en op-/afritten": [
+    {
+      "code": "O-410",
+      "omschrijving": "Opbreken en afvoeren fietspad (B<2m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 10.84
+    },
+    {
+      "code": "O-413",
+      "omschrijving": "Opbreken en afvoeren regionale weg (B=4-7m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 15.0
+    },
+    {
+      "code": "O-414",
+      "omschrijving": "Opbreken en afvoeren autoweg (B>7m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 27.91
+    },
+    {
+      "code": "O-415",
+      "omschrijving": "Opbreken en afvoeren autosnelweg (B>7m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 44.95
+    },
+    {
+      "code": "O-510",
+      "omschrijving": "Leveren en aanbrengen fietspad (B<2m) exclusief bebording en verlichting",
+      "eenheid": "m²",
+      "prijs": 38.61
+    },
+    {
+      "code": "O-513",
+      "omschrijving": "Leveren en aanbrengen regionale weg (B=4-7m) exclusief bebording verlichting bermen en sloten",
+      "eenheid": "m²",
+      "prijs": 54.79
+    },
+    {
+      "code": "O-514",
+      "omschrijving": "Leveren en aanbrengen autoweg (B>7m) exclusief bebording verlichting vangrail geluidsscherm signalering bermen en sloten",
+      "eenheid": "m²",
+      "prijs": 54.77
+    },
+    {
+      "code": "O-515",
+      "omschrijving": "Leveren en aanbrengen autosnelweg (B>7m) exclusief bebording verlichting vangrail geluidsscherm signalering bermen en sloten",
+      "eenheid": "m²",
+      "prijs": 63.54
+    }
+  ],
+  "Grondverzet": [
+    {
+      "code": "Q-GV010",
+      "omschrijving": "Ontgraven teelaarde vervoeren (1km) en in tijdelijk depot zetten (m3_insitu)",
+      "eenheid": "m³",
+      "prijs": 3.71
+    },
+    {
+      "code": "Q-GV021",
+      "omschrijving": "Ontgraven klei en vervoeren (25km) naar verwerker (geen stort-/recyclingskosten geen opbrengsten) (m3_insitu)",
+      "eenheid": "m³",
+      "prijs": 9.45
+    },
+    {
+      "code": "Q-GV030",
+      "omschrijving": "Ontgraven zand vervoeren (1km) en in tijdelijk depot zetten (m3_insitu)",
+      "eenheid": "m³",
+      "prijs": 3.07
+    },
+    {
+      "code": "Q-GV050",
+      "omschrijving": "Opnemen uit depot astransport en aanbrengen (verwerken) van zand (kern)",
+      "eenheid": "m³",
+      "prijs": 2.9
+    },
+    {
+      "code": "Q-GV060",
+      "omschrijving": "Opnemen uit depot astransport en aanbrengen (verwerken) toplaag (teelaarde)",
+      "eenheid": "m³",
+      "prijs": 3.93
+    },
+    {
+      "code": "Q-GV070",
+      "omschrijving": "Leveren en aanbrengen (verwerken) teelaarde",
+      "eenheid": "m³",
+      "prijs": 16.9
+    },
+    {
+      "code": "Q-GV080",
+      "omschrijving": "Leveren en aanbrengen (verwerken) klei",
+      "eenheid": "m³",
+      "prijs": 21.06
+    },
+    {
+      "code": "Q-GV090",
+      "omschrijving": "Leveren en aanbrengen (verwerken) zand (kern)",
+      "eenheid": "m³",
+      "prijs": 14.54
+    }
+  ],
+  "Profielafwerking": [
+    {
+      "code": "Q-GV100",
+      "omschrijving": "Profileren dijkprofiel kern",
+      "eenheid": "m²",
+      "prijs": 0.73
+    },
+    {
+      "code": "Q-GV110",
+      "omschrijving": "Profileren dijkprofiel afdeklaag",
+      "eenheid": "m²",
+      "prijs": 0.8
+    },
+    {
+      "code": "Q-GV120",
+      "omschrijving": "Profileren dijkprofiel teelaarde (eindprofiel)",
+      "eenheid": "m²",
+      "prijs": 0.77
+    }
+  ],
+  "Algemene werkzaamheden": [
+    {
+      "code": "Q-AW010",
+      "omschrijving": "Opruimen terrein (hekwerk paaltjes bomen struiken e.d.) en afvoeren naar stort (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 0.28
+    },
+    {
+      "code": "Q-AW020",
+      "omschrijving": "Maaien terreinen en afvoeren maaisel naar stort (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 0.02
+    },
+    {
+      "code": "Q-AW030",
+      "omschrijving": "Inzaaien dijkprofiel",
+      "eenheid": "m²",
+      "prijs": 0.34
+    },
+    {
+      "code": "P-AW040",
+      "omschrijving": "Opnemen grasmat (incl. 10 cm teelaarde) en afvoeren naar verwerker (geen stort-/recyclingskosten geen opbrengsten)",
+      "eenheid": "m²",
+      "prijs": 0.62
+    },
+    {
+      "code": "P-AW050",
+      "omschrijving": "Leveren en aanbrengen grasmat (incl. 10 cm teelaarde)",
+      "eenheid": "m²",
+      "prijs": 6.84
+    }
+  ]
+}

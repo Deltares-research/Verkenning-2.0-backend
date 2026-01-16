@@ -1,0 +1,29 @@
+﻿Code,Omschrijving,Percentage
+,Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen,
+Q-EKABKUKMAN,"Eenmalige-, algemene bouwplaats-, uitvoerings- en projectmanagementkosten",20.00%
+Q-AK,Algemene kosten (AK),7.20%
+Q-WR,Winst & risico,5.10%
+Q-ENGOG1,Engineeringskosten opdrachtgever (EPK) - makkelijk,8.00%
+Q-ENGOG2,Engineeringskosten opdrachtgever (EPK) - gemiddeld,10.00%
+Q-ENGOG3,Engineeringskosten opdrachtgever (EPK) - moeilijk,12.00%
+Q-ENGON1,"Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - makkelijk",5.90%
+Q-ENGON2,"Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - gemiddeld",8.90%
+Q-ENGON3,"Engineeringskosten opdrachtnemer (schets-, voor-, definitief ontwerp, e.d.) - moeilijk",11.90%
+Q-OND,"Onderzoeken (archeologie, explosieven, LNC, e.d.))",1.00%
+Q-VERG,"Vergunningen, heffingen en verzekeringen",3.00%
+Q-KL,Kabels & leidingen,1.00%
+Q-PLAN,Planschade & inpassingsmaatregelen,4.00%
+,Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen,
+Q-GGMAKNTD,GG - makkelijk: Nader te detailleren directe bouwkosten,1.00%
+Q-GGMAKONV,GG - makkelijk: Objectoverstijgende risicoreservering,10.00%
+Q-GGGEMNTD,GG - gemiddeld: Nader te detailleren directe bouwkosten,3.00%
+Q-GGGEMONV,GG - gemiddeld: Objectoverstijgende risicoreservering,15.00%
+Q-GGMOENTD,GG - moeilijk: Nader te detailleren directe bouwkosten,5.00%
+Q-GGMOEONV,GG - moeilijk: Objectoverstijgende risicoreservering,20.00%
+,Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen,
+Q-GCMAKNTD,GC - makkelijk: Nader te detailleren directe bouwkosten,5.00%
+Q-GCMAKONV,GC - makkelijk: Objectoverstijgende risicoreservering,20.00%
+Q-GCGEMNTD,GC - gemiddeld: Nader te detailleren directe bouwkosten,10.00%
+Q-GCGEMONV,GC - gemiddeld: Objectoverstijgende risicoreservering,25.00%
+Q-GCMOENTD,GC - moeilijk: Nader te detailleren directe bouwkosten,15.00%
+Q-GCMOEONV,GC - moeilijk: Objectoverstijgende risicoreservering,30.00%
