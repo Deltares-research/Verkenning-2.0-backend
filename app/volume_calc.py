@@ -234,7 +234,7 @@ class DikeModel:
         ✅ FIXED: Now interpolates design heights at each grid point instead of using mean!
         """
 
-        return self.calculate_volume_below_surface(self.design_export_3d)
+        return self.calculate_volume_below_surface(self.design_export_3d.geometry)
 
     def calculate_volume_below_surface(self, surface: Union[gpd.GeoSeries, list[Polygon]]):
         """
