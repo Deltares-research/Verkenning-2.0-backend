@@ -5,8 +5,9 @@ import time
 from typing import Union
 
 import numpy as np
+from pathlib import Path
 from matplotlib import pyplot as plt
-from matplotlib.path import Path
+from matplotlib.path import Path as MplPath
 from pyproj import Transformer
 from scipy.interpolate import griddata
 from scipy.ndimage import map_coordinates, median_filter
@@ -20,7 +21,7 @@ from shapely.prepared import prep
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
-from .constants import *
+from .unit_costs_and_surcharges import load_kosten_catalogus
 
 transformer = Transformer.from_crs("EPSG:4326", "EPSG:28992", always_xy=True)
 transformer_rd_to_wm = Transformer.from_crs("EPSG:28992", "EPSG:3857", always_xy=True)
@@ -67,7 +68,7 @@ class DikeModel:
 
         # extract exterior coordinates, ignoring Z
         poly_coords = np.array([[px, py] for px, py, *_ in poly.exterior.coords])
-        path = Path(poly_coords)
+        path = MplPath(poly_coords)
 
         mask = path.contains_points(points)
         self.grid_2d = points[mask]
@@ -198,7 +199,29 @@ class DikeModel:
 
     def compute_cost(self, nb_houses_intersected: int, road_area: int) -> dict:
 
-        STARTING_COST = 4000
+        path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
+        path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
+        cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
+        ground_dict = {item.code: item for item in cat.categorieen['Grondverzet']}
+        ground_dict_other = {item.code: item for item in cat.categorieen['Profielafwerking']}
+        general_construction_dict = {item.code: item for item in cat.categorieen['Algemene werkzaamheden']}
+        roads_cost_dict = {item.code: item for item in cat.categorieen['Wegen fietspaden en op-/afritten']}
+
+        Q_GV010 = ground_dict['Q-GV010'].prijs
+        Q_GV030 = ground_dict['Q-GV030'].prijs
+        Q_GV050 = ground_dict['Q-GV050'].prijs
+        Q_GV060 = ground_dict['Q-GV060'].prijs
+        Q_GV070 = ground_dict['Q-GV070'].prijs
+        Q_GV080 = ground_dict['Q-GV080'].prijs
+        Q_GV090 = ground_dict['Q-GV090'].prijs
+        Q_GV100 = ground_dict_other['Q-GV100'].prijs
+        Q_GV110 = ground_dict_other['Q-GV110'].prijs
+        Q_GV120 = ground_dict_other['Q-GV120'].prijs
+        Q_AW010 = general_construction_dict['Q-AW010'].prijs
+        Q_AW020 = general_construction_dict['Q-AW020'].prijs
+        Q_AW030 = general_construction_dict['Q-AW030'].prijs
+        ROAD_UNIT_COST = roads_cost_dict['O-413'].prijs + roads_cost_dict['O-513'].prijs
+
 
         ##### Calculate filling volumes V3, V4, V5:
         volumes = self.calculate_all_dike_volumes()
@@ -210,12 +233,14 @@ class DikeModel:
         S0 = volumes['S0']
         S5 = self.calculate_total_3d_surface_area().get('total_3d_area_m2')  # assume S3 = S4 = S5
 
+        ### Combine to get costs
         groundwork_cost = (V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
                            (V5 + V1b) * Q_GV090 + V4 * Q_GV080 + V1b * Q_GV060 + (V3 - V1b) * Q_GV070) + S0 * (
                                       Q_AW010 + Q_AW020) + S5 * (Q_GV100 + Q_GV110 + Q_GV120 - Q_AW030)
         road_removal_cost = road_area * ROAD_UNIT_COST
 
-        return {"Directe bouwkosten": {"Voorbereiding": None,  # TODO
+
+        return {"Directe bouwkosten": {"Voorbereiding": None,  # TODO ?
                                        "Grondwerk": groundwork_cost,
                                        "Constructie": None,
                                        },
@@ -265,7 +290,7 @@ class DikeModel:
         masks = []
         for row in list(surface):
             poly = row
-            path = Path(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
+            path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
             mask = path.contains_points(grid_pts_global)
             points_in_poly = np.sum(mask)
             masks.append(mask)
@@ -358,7 +383,7 @@ class DikeModel:
         masks = []
         for idx, row in self.design_export_3d.iterrows():
             poly = row.geometry
-            path = Path(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
+            path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
             mask = path.contains_points(grid_pts_global)
             masks.append(mask)
 
