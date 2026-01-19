@@ -91,4 +91,8 @@ def test_compute_cost_monotonic_road_area(dike_model):
 
 def test_groundwork_cost_nonzero(dike_model):
     costs = dike_model.compute_cost(nb_houses_intersected=0, road_area=0)
+    EXPECTED_COST_DECOMPOSITION = {
+        'Directe bouwkosten': {'Voorbereiding': None, 'Grondwerk': 284887.0606946243, 'Constructie': None},
+        'Engineeringkosten': None, 'Vastgoedkosten': {'Panden': None, 'Wegen': 0.0}}
     assert costs["Directe bouwkosten"]["Grondwerk"] > 0
+    assert costs == EXPECTED_COST_DECOMPOSITION
