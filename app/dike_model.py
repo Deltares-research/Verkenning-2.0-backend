@@ -173,13 +173,14 @@ class DikeModel:
             'S0': S0
         }
 
-    def compute_cost(self, nb_houses_intersected: int, road_area: int) -> dict:
+    def compute_cost(self, nb_houses_intersected: int, road_area: int, complexity: str) -> dict:
         """
         Calculate all the cost for a dike model: groundwork, construction, engineering, real estate costs.
 
         input:
             nb_houses_intersected: number of houses intersected by the dike (for real estate costs)
             road_area: area of roads to be removed (m²)
+            complexity: 'easy', 'medium', 'complex' (for engineering costs with opslagfactor)
         output:
             cost structure dictionary
         """

@@ -253,7 +253,7 @@ async def calculate_total_cost(
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
 
-        cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area)
+        cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area, 'easy')
 
         return DesignCostResult(
             breakdown=cost_breakdown
