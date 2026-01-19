@@ -6,12 +6,13 @@ import time
 
 import shapely
 
+from app.dike_model import DikeModel
+
 sys.path.insert(0, '..')
 
 import json
 import geopandas as gpd
 from shapely.geometry import shape
-from app.volume_calc import DikeModel
 
 # Test GeoJSON input
 geojson_input = {
@@ -229,10 +230,10 @@ print("\nInitializing DikeModel...")
 dike_model = DikeModel(gdf)
 
 print("\nCalculating volumes...")
-dike_model.calculate_volume_matthias()
+dike_model.calculate_volume()
 
 print("\nCalculating volumes and direct cost...")
-costs = dike_model.compute_cost(10,10)
+costs = dike_model.compute_cost(10, 10, 'easy')
 print(costs)
 
 # dike_model.plot_existing_and_new_surface_plotly()

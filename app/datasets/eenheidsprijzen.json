@@ -1,0 +1,186 @@
+{
+  "Damwandconstructies (vereenvoudigd)": [
+    {
+      "code": "c_Onverankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Onverankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 136.94
+    },
+    {
+      "code": "z_Onverankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 107.31
+    },
+    {
+      "code": "c_Verankerd",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 9.63
+    },
+    {
+      "code": "d_Verankerd",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 174.65
+    },
+    {
+      "code": "z_Verankerd",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 1409.61
+    },
+    {
+      "code": "c_Heavescherm",
+      "omschrijving": "Kosten per oppervlakte onverankerde damwand in m2",
+      "eenheid": "m²",
+      "prijs": 8.67
+    },
+    {
+      "code": "d_Heavescherm",
+      "omschrijving": "Kosten per strekkende meter onverankerde damwand in m2",
+      "eenheid": "m¹",
+      "prijs": 123.24
+    },
+    {
+      "code": "z_Heavescherm",
+      "omschrijving": "Vaste kosten onverankerd",
+      "eenheid": "[-]",
+      "prijs": 96.58
+    }
+  ],
+  "Wegen fietspaden en op-/afritten": [
+    {
+      "code": "O-410",
+      "omschrijving": "Opbreken en afvoeren fietspad (B<2m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 10.84
+    },
+    {
+      "code": "O-413",
+      "omschrijving": "Opbreken en afvoeren regionale weg (B=4-7m) (incl. stort-/recyclingskosten)",
+      "eenheid": "m²",
+      "prijs": 15.0
+    },
+    {
+      "code": "O-510",
+      "omschrijving": "Leveren en aanbrengen fietspad (B<2m) exclusief bebording en verlichting",
+      "eenheid": "m²",
+      "prijs": 38.61
+    },
+    {
+      "code": "O-513",
+      "omschrijving": "Leveren en aanbrengen regionale weg (B=4-7m) exclusief bebording verlichting bermen en sloten",
+      "eenheid": "m²",
+      "prijs": 54.79
+    }
+  ],
+  "Grondverzet": [
+    {
+      "code": "Q-GV010",
+      "omschrijving": "Ontgraven teelaarde en in tijdelijk depot zetten",
+      "eenheid": "m³",
+      "prijs": 3.71
+    },
+    {
+      "code": "Q-GV021",
+      "omschrijving": "Ontgraven klei en afvoeren naar verwerker",
+      "eenheid": "m³",
+      "prijs": 9.45
+    },
+    {
+      "code": "Q-GV030",
+      "omschrijving": "Ontgraven zand en in tijdelijk depot zetten",
+      "eenheid": "m³",
+      "prijs": 3.07
+    },
+    {
+      "code": "Q-GV050",
+      "omschrijving": "Opnemen uit depot en aanbrengen van zand (kern)",
+      "eenheid": "m³",
+      "prijs": 2.9
+    },
+    {
+      "code": "Q-GV060",
+      "omschrijving": "Opnemen uit depot en aanbrengen toplaag (teelaarde)",
+      "eenheid": "m³",
+      "prijs": 3.93
+    },
+    {
+      "code": "Q-GV070",
+      "omschrijving": "Leveren en aanbrengen (verwerken) teelaarde",
+      "eenheid": "m³",
+      "prijs": 16.9
+    },
+    {
+      "code": "Q-GV080",
+      "omschrijving": "Leveren en aanbrengen (verwerken) klei",
+      "eenheid": "m³",
+      "prijs": 21.06
+    },
+    {
+      "code": "Q-GV090",
+      "omschrijving": "Leveren en aanbrengen (verwerken) zand (kern)",
+      "eenheid": "m³",
+      "prijs": 14.54
+    }
+  ],
+  "Profielafwerking": [
+    {
+      "code": "Q-GV100",
+      "omschrijving": "Profileren dijkprofiel kern",
+      "eenheid": "m²",
+      "prijs": 0.73
+    },
+    {
+      "code": "Q-GV110",
+      "omschrijving": "Profileren dijkprofiel afdeklaag",
+      "eenheid": "m²",
+      "prijs": 0.8
+    },
+    {
+      "code": "Q-GV120",
+      "omschrijving": "Profileren dijkprofiel teelaarde (eindprofiel)",
+      "eenheid": "m²",
+      "prijs": 0.77
+    }
+  ],
+  "Algemene werkzaamheden": [
+    {
+      "code": "Q-AW010",
+      "omschrijving": "Opruimen terrein en afvoeren naar stort",
+      "eenheid": "m²",
+      "prijs": 0.28
+    },
+    {
+      "code": "Q-AW020",
+      "omschrijving": "Maaien terreinen en afvoeren maaisel naar stort",
+      "eenheid": "m²",
+      "prijs": 0.02
+    },
+    {
+      "code": "Q-AW030",
+      "omschrijving": "Inzaaien dijkprofiel",
+      "eenheid": "m²",
+      "prijs": 0.34
+    },
+    {
+      "code": "P-AW040",
+      "omschrijving": "Opnemen grasmat en afvoeren naar verwerker",
+      "eenheid": "m²",
+      "prijs": 0.62
+    },
+    {
+      "code": "P-AW050",
+      "omschrijving": "Leveren en aanbrengen grasmat (incl. teelaarde)",
+      "eenheid": "m²",
+      "prijs": 6.84
+    }
+  ]
+}
