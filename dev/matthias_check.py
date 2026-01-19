@@ -6,12 +6,13 @@ import time
 
 import shapely
 
+from app.dike_model import DikeModel
+
 sys.path.insert(0, '..')
 
 import json
 import geopandas as gpd
 from shapely.geometry import shape
-from app.volume_calc import DikeModel
 
 # Test GeoJSON input
 geojson_input = {

@@ -1,46 +1,18 @@
-"""
-Dike volume calculation using AHN4 elevation data.
-"""
-import time
 from typing import Union
 
 import numpy as np
 from pathlib import Path
-from matplotlib import pyplot as plt
 from matplotlib.path import Path as MplPath
-from pyproj import Transformer
 from scipy.interpolate import griddata
-from scipy.ndimage import map_coordinates, median_filter
+from scipy.ndimage import map_coordinates
 from scipy.spatial import Delaunay
-from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
-from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.ops import unary_union
-from shapely.prepared import prep
-
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
 from .unit_costs_and_surcharges import load_kosten_catalogus
-
-transformer = Transformer.from_crs("EPSG:4326", "EPSG:28992", always_xy=True)
-transformer_rd_to_wm = Transformer.from_crs("EPSG:28992", "EPSG:3857", always_xy=True)
-
-
-def reproject_polygon_with_z(poly):
-    """
-    Reproject a Polygon Z from WGS84 to RD while keeping the Z coordinate.
-    Returns a Polygon with 3D coordinates (x_RD, y_RD, z).
-    """
-    exterior_coords_3d = []
-    for x, y, *z in poly.exterior.coords:
-        z_val = z[0] if z else 0.0
-        x_rd, y_rd = transformer.transform(x, y)
-        exterior_coords_3d.append((x_rd, y_rd, z_val))
-    # Ensure the polygon is closed
-    if exterior_coords_3d[0] != exterior_coords_3d[-1]:
-        exterior_coords_3d.append(exterior_coords_3d[0])
-    return Polygon(exterior_coords_3d)
+from .utils import reproject_polygon_with_z
 
 
 class DikeModel:
@@ -48,10 +20,6 @@ class DikeModel:
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.design_export_3d = design_export_3d
         self.design_export_3d["geometry"] = self.design_export_3d["geometry"].apply(reproject_polygon_with_z)
-
-        self.excavationVolume = 0
-        self.fillVolume = 0
-        self.totalVolumeDifference = 0
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -223,15 +191,15 @@ class DikeModel:
         ROAD_UNIT_COST = roads_cost_dict['O-413'].prijs + roads_cost_dict['O-513'].prijs
 
 
-        ##### Calculate filling volumes V3, V4, V5:
+        ### Calculate filling volumes V3, V4, V5:
         volumes = self.calculate_all_dike_volumes()
-        V1b = volumes['V1b']
-        V2b = volumes['V2b']
-        V3 = volumes['V3']
-        V4 = volumes['V4']
-        V5 = volumes['V5']
-        S0 = volumes['S0']
-        S5 = self.calculate_total_3d_surface_area().get('total_3d_area_m2')  # assume S3 = S4 = S5
+        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
+        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
+        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
+        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
+        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
+        S0 = volumes['S0']  # surface area beyond the toe of the old dike
+        S5 = self.calculate_total_3d_surface_area().get('total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
         ### Combine to get costs
         groundwork_cost = (V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
@@ -270,14 +238,10 @@ class DikeModel:
         combined_poly = unary_union(surface)
 
         # 2) Generate a global grid
-        time1 = time.time()
         grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-        time2 = time.time()
 
         # 3) Get the AHN elevations for the grid
-        time3 = time.time()
         elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-        time4 = time.time()
 
         nan_count = np.isnan(elev_global).sum()
         valid_count = len(elev_global) - nan_count
@@ -335,11 +299,6 @@ class DikeModel:
 
             tot_volume_fill += fill
             tot_volume_cut += cut
-
-        print(f"\n=== FINAL TOTALS ===")
-        print(f"Total fill (m³): {tot_volume_fill:.2f}")
-        print(f"Total cut (m³): {tot_volume_cut:.2f}")
-        print(f"Net difference (m³): {tot_volume_fill - tot_volume_cut:.2f}")
 
         return {
             'fill_volume': tot_volume_fill,
