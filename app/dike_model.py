@@ -71,8 +71,8 @@ class DikeModel:
         return elev
 
     def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
-                                  THICKNESS_TOP_LAYER: float = 0.2,
-                                  THICKNESS_CLAY_LAYER: float = 0.8) -> tuple[float, float, float]:
+                                  thickness_top_layer: float = 0.2,
+                                  thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
 
         """
         Compute the following volumes:
@@ -86,9 +86,9 @@ class DikeModel:
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
         for row in list(design_3d_surface):
-            clay_layer_top_surface.append(Polygon([(x, y, z - THICKNESS_TOP_LAYER) for x, y, z in row.exterior.coords]))
+            clay_layer_top_surface.append(Polygon([(x, y, z - thickness_top_layer) for x, y, z in row.exterior.coords]))
             sand_layer_top_surface.append(
-                Polygon([(x, y, z - THICKNESS_TOP_LAYER - THICKNESS_CLAY_LAYER) for x, y, z in row.exterior.coords]))
+                Polygon([(x, y, z - thickness_top_layer - thickness_clay_layer) for x, y, z in row.exterior.coords]))
 
         volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
@@ -142,19 +142,27 @@ class DikeModel:
         S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
         return V1b, V2b, S0
 
-    def calculate_all_dike_volumes(self):
-        THICKNESS_TOP_LAYER = 0.2  # meters
-        THICKNESS_CLAY_LAYER = 0.8  # meters
+    def calculate_all_dike_volumes(self, thickness_top_layer: float = 0.2, thickness_clay_layer: float = 0.8) -> dict:
+        """
+        Calculate all dike volumes:
+        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
+        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
+        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
+        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
+        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
+        S0 = volumes['S0']  # surface area beyond the toe of the old dike
+        """
+
 
         design_3d_surface = self.design_export_3d.geometry
 
         ##### Calculate filling volumes V3, V4, V5:
-        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, THICKNESS_TOP_LAYER=THICKNESS_TOP_LAYER,
-                                                    THICKNESS_CLAY_LAYER=THICKNESS_CLAY_LAYER)
+        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, thickness_top_layer=thickness_top_layer,
+                                                    thickness_clay_layer=thickness_clay_layer)
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=THICKNESS_TOP_LAYER,
-                                                     thickness_clay_layer=THICKNESS_CLAY_LAYER)
+        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=thickness_top_layer,
+                                                     thickness_clay_layer=thickness_clay_layer)
 
         return {
             'V1b': V1b,
@@ -166,6 +174,15 @@ class DikeModel:
         }
 
     def compute_cost(self, nb_houses_intersected: int, road_area: int) -> dict:
+        """
+        Calculate all the cost for a dike model: groundwork, construction, engineering, real estate costs.
+
+        input:
+            nb_houses_intersected: number of houses intersected by the dike (for real estate costs)
+            road_area: area of roads to be removed (m²)
+        output:
+            cost structure dictionary
+        """
 
         path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
         path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
@@ -190,25 +207,37 @@ class DikeModel:
         Q_AW030 = general_construction_dict['Q-AW030'].prijs
         ROAD_UNIT_COST = roads_cost_dict['O-413'].prijs + roads_cost_dict['O-513'].prijs
 
-
         ### Calculate filling volumes V3, V4, V5:
-        volumes = self.calculate_all_dike_volumes()
+        THICKNESS_TOP_LAYER = 0.2  # meters
+        THICKNESS_CLAY_LAYER = 0.8  # meters
+        volumes = self.calculate_all_dike_volumes(THICKNESS_TOP_LAYER, THICKNESS_CLAY_LAYER)
         V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
         V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
         V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
         S0 = volumes['S0']  # surface area beyond the toe of the old dike
-        S5 = self.calculate_total_3d_surface_area().get('total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
+        S5 = self.calculate_total_3d_surface_area().get(
+            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
         ### Combine to get costs
-        groundwork_cost = (V1b * Q_GV010 + V2b * (Q_GV030 + Q_GV050) +
-                           (V5 + V1b) * Q_GV090 + V4 * Q_GV080 + V1b * Q_GV060 + (V3 - V1b) * Q_GV070) + S0 * (
-                                      Q_AW010 + Q_AW020) + S5 * (Q_GV100 + Q_GV110 + Q_GV120 - Q_AW030)
+        groundwork_cost = (
+                S0 * (Q_AW010 + Q_AW020) + # Voorbereiden terrein
+                V1b * Q_GV010 +  # afgraven oude grasbekleding naar depot
+                V2b * Q_GV030 + # afgraven oude kleilaag naar depot
+                V2b * Q_GV050 + # hergebruiken oude kleilaag in nieuwe kern
+                (V5 + V1b) * Q_GV090 +  # aanvullen nieuwe kern met nieuw materiaal
+                S5 * Q_GV100 + # profieleren van dijkkern
+                V4 * Q_GV080 + # aanbregen nieuwe kleilaag
+                S5 *  Q_GV110 + # profileren nieuwe kleilaar
+                V1b * Q_GV060 + # hergebruiken teelaarde in nieuwe bekleding
+                (V3 - V1b) * Q_GV070 + # aanvullen teelaarde in nieuwe bekleding
+                S5 * (Q_GV120 - Q_AW030) # profileren nieuwe graslaag en inzaaien
+        )
+
         road_removal_cost = road_area * ROAD_UNIT_COST
 
-
-        return {"Directe bouwkosten": {"Voorbereiding": None,  # TODO ?
+        return {"Directe bouwkosten": {"Voorbereiding": None,
                                        "Grondwerk": groundwork_cost,
                                        "Constructie": None,
                                        },
@@ -220,7 +249,7 @@ class DikeModel:
                                    },
                 }
 
-    def calculate_volume_matthias(self):
+    def calculate_volume(self):
         """
         Compute fill and excavation volumes for all polygons using a single global grid
         and single AHN raster query.
@@ -326,13 +355,11 @@ class DikeModel:
 
         # 2) Generate a global grid
         grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-        print(f"Grid: {len(grid_pts_global)} points, size={self.grid_size}m")
 
         # 3) Get the AHN elevations for the grid
         elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
 
         valid_count = len(elev_global) - np.isnan(elev_global).sum()
-        print(f"Valid elevations: {valid_count}/{len(elev_global)}")
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
@@ -381,7 +408,6 @@ class DikeModel:
             points_above_3d = np.column_stack([pts_xy, z_vals])
             above_ground_points.extend(points_above_3d.tolist())
 
-        print(f"Points above ground: {len(above_ground_points)}")
         total_area = len(above_ground_points) * (self.grid_size ** 2)
 
         if len(above_ground_points) < 3:
@@ -447,10 +473,6 @@ class DikeModel:
 
                 features.append(feature)
 
-            print(f"Created {len(features)} alpha shape polygon(s)")
-
-            print(f"Total ruimtebeslag area: {total_area:.2f} m²")
-
             return {
                 'type': 'FeatureCollection',
                 'features': features,
@@ -501,7 +523,6 @@ class DikeModel:
             coords_3d = row.geometry.exterior.coords
             total_area += planar_polygon_area_3d(coords_3d)
 
-        print(f"Total 3D surface area (planar): {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}
 
     def calculate_3d_surface_area_above_ahn(self, grid_size: float = None):
@@ -566,5 +587,4 @@ class DikeModel:
             if len(clipped_coords) >= 3:
                 total_area += planar_polygon_area_3d(clipped_coords)
 
-        print(f"Total 3D surface area above AHN: {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}

@@ -116,7 +116,7 @@ def main():
         dike_model = DikeModel(gdf, grid_size=0.525)
         
         # Calculate volumes
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         print(f"\n{'='*70}")
         print("✅ RESULTS")

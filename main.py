@@ -130,7 +130,7 @@ async def calculate_designs(
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         print(f"DEBUG: Result type: {type(result)}")
         print(f"DEBUG: Result value: {result}")
@@ -217,7 +217,7 @@ async def debug_calculate_volume(
         
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         return {
             "result_type": str(type(result)),
