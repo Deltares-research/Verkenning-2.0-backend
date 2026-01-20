@@ -233,8 +233,8 @@ async def debug_calculate_volume(
 @app.post("/api/cost_calculation", response_model=DesignCostResult)
 async def calculate_total_cost(
         geojson: GeoJSONInput,
+        complexity: str,
         road_surface: float,
-        ruimtebeslag_area: float,
         number_houses: int,
         api_key: str = Depends(verify_api_key)
 ):
@@ -253,7 +253,9 @@ async def calculate_total_cost(
         print(1111111111111)
         dike_model = DikeModel(gdf)
 
-        cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area, 'easy')
+        cost_breakdown = dike_model.compute_cost(road_area=road_surface,
+                                                 complexity=complexity,
+                                                 nb_houses=number_houses)
         print(cost_breakdown)
 
         return DesignCostResult(

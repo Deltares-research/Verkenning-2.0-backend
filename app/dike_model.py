@@ -153,7 +153,6 @@ class DikeModel:
         S0 = volumes['S0']  # surface area beyond the toe of the old dike
         """
 
-
         design_3d_surface = self.design_export_3d.geometry
 
         ##### Calculate filling volumes V3, V4, V5:
@@ -173,7 +172,7 @@ class DikeModel:
             'S0': S0
         }
 
-    def compute_cost(self, nb_houses_intersected: int, road_area: int, complexity: str) -> dict:
+    def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
         """
         Calculate all the cost for a dike model: groundwork, construction, engineering, real estate costs.
 
@@ -223,17 +222,17 @@ class DikeModel:
 
         ### Combine to get costs
         groundwork_cost = (
-                S0 * (Q_AW010 + Q_AW020) + # Voorbereiden terrein
+                S0 * (Q_AW010 + Q_AW020) +  # Voorbereiden terrein
                 V1b * Q_GV010 +  # afgraven oude grasbekleding naar depot
-                V2b * Q_GV030 + # afgraven oude kleilaag naar depot
-                V2b * Q_GV050 + # hergebruiken oude kleilaag in nieuwe kern
+                V2b * Q_GV030 +  # afgraven oude kleilaag naar depot
+                V2b * Q_GV050 +  # hergebruiken oude kleilaag in nieuwe kern
                 (V5 + V1b) * Q_GV090 +  # aanvullen nieuwe kern met nieuw materiaal
-                S5 * Q_GV100 + # profieleren van dijkkern
-                V4 * Q_GV080 + # aanbregen nieuwe kleilaag
-                S5 *  Q_GV110 + # profileren nieuwe kleilaar
-                V1b * Q_GV060 + # hergebruiken teelaarde in nieuwe bekleding
-                (V3 - V1b) * Q_GV070 + # aanvullen teelaarde in nieuwe bekleding
-                S5 * (Q_GV120 - Q_AW030) # profileren nieuwe graslaag en inzaaien
+                S5 * Q_GV100 +  # profieleren van dijkkern
+                V4 * Q_GV080 +  # aanbregen nieuwe kleilaag
+                S5 * Q_GV110 +  # profileren nieuwe kleilaar
+                V1b * Q_GV060 +  # hergebruiken teelaarde in nieuwe bekleding
+                (V3 - V1b) * Q_GV070 +  # aanvullen teelaarde in nieuwe bekleding
+                S5 * (Q_GV120 - Q_AW030)  # profileren nieuwe graslaag en inzaaien
         )
 
         road_removal_cost = road_area * ROAD_UNIT_COST
@@ -243,12 +242,39 @@ class DikeModel:
                                        "Constructie": 0,
                                        },
 
-                "Engineeringkosten": 0,
+                "Engineeringkosten": self.calc_engineering_cost(groundwork_cost, complexity, cat),
 
                 "Vastgoedkosten": {"Panden": 0,
                                    "Wegen": road_removal_cost,
                                    },
                 }
+
+    def calc_engineering_cost(self, total_direct_cost: float, complexity: str, catalogue)-> dict:
+        """
+        Calculate the engineering cost as a fraction of the total direct cost, based on the complexity and the price catalogue.
+
+        :param total_direct_cost: Total direct construction cost
+        :param complexity: Complexity level ('makkelijke maatregel', 'gemiddelde maatregel', 'moeilijke maatregel')
+        :param catalogue: Cost catalogue with opslag factors
+        """
+
+        opslag_factor_dict = {item.code: item for item in catalogue.categorieen[
+            'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen']}
+        if complexity == 'makkelijke maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG1"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON1"].prijs
+        elif complexity == 'gemiddelde maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG2"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON2"].prijs
+
+        elif complexity == 'moeilijke maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG3"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON3"].prijs
+
+        else:
+            raise ValueError(f"Unknown complexity level: {complexity}")
+        return {"engineering_cost_EPK": total_direct_cost * engineering_cost_EPK / 100.0,
+                "engineering_cost_schets": total_direct_cost * engineering_cost_schets / 100.0}
 
     def calculate_volume(self):
         """

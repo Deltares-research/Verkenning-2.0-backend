@@ -233,7 +233,7 @@ print("\nCalculating volumes...")
 dike_model.calculate_volume()
 
 print("\nCalculating volumes and direct cost...")
-costs = dike_model.compute_cost(10, 10, 'easy')
+costs = dike_model.compute_cost(10, 10, 'makkelijke maatregel')
 print(costs)
 
 # dike_model.plot_existing_and_new_surface_plotly()
