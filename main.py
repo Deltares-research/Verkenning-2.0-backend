@@ -256,7 +256,7 @@ async def calculate_total_cost(
         cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area, 'easy')
 
         return DesignCostResult(
-            breakdown=cost_breakdown
+            cost_breakdown=cost_breakdown
         )
 
     except Exception as e:
