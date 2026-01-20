@@ -238,14 +238,14 @@ class DikeModel:
 
         road_removal_cost = road_area * ROAD_UNIT_COST
 
-        return {"Directe bouwkosten": {"Voorbereiding": None,
+        return {"Directe bouwkosten": {"Voorbereiding": 0,
                                        "Grondwerk": groundwork_cost,
-                                       "Constructie": None,
+                                       "Constructie": 0,
                                        },
 
-                "Engineeringkosten": None,
+                "Engineeringkosten": 0,
 
-                "Vastgoedkosten": {"Panden": None,
+                "Vastgoedkosten": {"Panden": 0,
                                    "Wegen": road_removal_cost,
                                    },
                 }

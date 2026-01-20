@@ -5,8 +5,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import geopandas as gpd
 from shapely.geometry import shape
-import json
-import time
+
 import os
 from dotenv import load_dotenv
 
@@ -86,7 +85,7 @@ class DesignCalculationResult(BaseModel):
     ruimtebeslag_2d_points: List[Any]  # Points data for calculting ruimtebeslag in the frontend
 
 class DesignCostResult(BaseModel):
-    cost_breakdown: Dict[str, float]
+    breakdown: dict  # Please dont change type, Pydantic is being very annoying
 
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
@@ -251,12 +250,14 @@ async def calculate_total_cost(
             features.append({'geometry': geom, **feature.properties})
 
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
+        print(1111111111111)
         dike_model = DikeModel(gdf)
 
         cost_breakdown = dike_model.compute_cost(road_surface, ruimtebeslag_area, 'easy')
+        print(cost_breakdown)
 
         return DesignCostResult(
-            cost_breakdown=cost_breakdown
+            breakdown=cost_breakdown
         )
 
     except Exception as e:
