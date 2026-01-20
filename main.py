@@ -10,7 +10,7 @@ import time
 import os
 from dotenv import load_dotenv
 
-from app.volume_calc import DikeModel
+from app.dike_model import DikeModel
 
 load_dotenv()
 
