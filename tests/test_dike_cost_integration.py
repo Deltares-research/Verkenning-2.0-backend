@@ -74,7 +74,7 @@ def test_3d_surface_area_positive(dike_model):
 
 
 def test_compute_cost_structure(dike_model):
-    costs = dike_model.compute_cost(nb_houses_intersected=10, road_area=10, complexity='easy')
+    costs = dike_model.compute_cost(nb_houses=10, road_area=10, complexity='makkelijke maatregel')
 
     assert "Directe bouwkosten" in costs
     assert "Grondwerk" in costs["Directe bouwkosten"]
@@ -83,16 +83,19 @@ def test_compute_cost_structure(dike_model):
 
 
 def test_compute_cost_monotonic_road_area(dike_model):
-    cost_small = dike_model.compute_cost(nb_houses_intersected=0, road_area=5, complexity='easy')
-    cost_large = dike_model.compute_cost(nb_houses_intersected=0, road_area=20, complexity='easy')
+    cost_small = dike_model.compute_cost(nb_houses=0, road_area=5, complexity='makkelijke maatregel')
+    cost_large = dike_model.compute_cost(nb_houses=0, road_area=20, complexity='makkelijke maatregel')
 
     assert cost_large["Vastgoedkosten"]["Wegen"] > cost_small["Vastgoedkosten"]["Wegen"]
 
 
 def test_groundwork_cost_nonzero(dike_model):
-    costs = dike_model.compute_cost(nb_houses_intersected=0, road_area=0, complexity='easy')
+    costs = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
     EXPECTED_COST_DECOMPOSITION = {
-        'Directe bouwkosten': {'Voorbereiding': None, 'Grondwerk': 284887.0606946243, 'Constructie': None},
-        'Engineeringkosten': None, 'Vastgoedkosten': {'Panden': None, 'Wegen': 0.0}}
+        'Directe bouwkosten': {'Voorbereiding': 0, 'Grondwerk': 284887.0606946243, 'Constructie': 0},
+        'Engineeringkosten': {'engineering_cost_EPK': 22790.964855569946,
+                              'engineering_cost_schets': 16808.336580982836},
+        'Vastgoedkosten': {'Panden': 0, 'Wegen': 0.0}}
+
     assert costs["Directe bouwkosten"]["Grondwerk"] > 0
     assert costs == EXPECTED_COST_DECOMPOSITION
