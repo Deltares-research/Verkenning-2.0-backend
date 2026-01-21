@@ -11,6 +11,7 @@ from shapely.ops import unary_union
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
+from .cost_data_classes import CostCalculator, ConstructionCosts
 from .unit_costs_and_surcharges import load_kosten_catalogus
 from .utils import reproject_polygon_with_z
 
@@ -206,6 +207,7 @@ class DikeModel:
         Q_AW020 = general_construction_dict['Q-AW020'].prijs
         Q_AW030 = general_construction_dict['Q-AW030'].prijs
         ROAD_UNIT_COST = roads_cost_dict['O-413'].prijs + roads_cost_dict['O-513'].prijs
+        COST_HOUSES = 700000
 
         ### Calculate filling volumes V3, V4, V5:
         THICKNESS_TOP_LAYER = 0.2  # meters
@@ -221,8 +223,8 @@ class DikeModel:
             'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
         ### Combine to get costs
-        groundwork_cost = (
-                S0 * (Q_AW010 + Q_AW020) +  # Voorbereiden terrein
+        preparation_cost = S0 * (Q_AW010 + Q_AW020)  # Voorbereiden terrein
+        groundwork_cost = (  # Also called Benoemde Directe BouwKosten (BDBK)
                 V1b * Q_GV010 +  # afgraven oude grasbekleding naar depot
                 V2b * Q_GV030 +  # afgraven oude kleilaag naar depot
                 V2b * Q_GV050 +  # hergebruiken oude kleilaag in nieuwe kern
@@ -237,19 +239,33 @@ class DikeModel:
 
         road_removal_cost = road_area * ROAD_UNIT_COST
 
-        return {"Directe bouwkosten": {"Voorbereiding": 0,
-                                       "Grondwerk": groundwork_cost,
-                                       "Constructie": 0,
-                                       },
+        calculator = CostCalculator(cat, complexity)
+        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost, preparation_cost=preparation_cost)
+        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
+        general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
 
-                "Engineeringkosten": self.calc_engineering_cost(groundwork_cost, complexity, cat),
+        investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
 
-                "Vastgoedkosten": {"Panden": 0,
+        total_cost_excl_BTW = investering_cost + risk_cost
+        print(total_cost_excl_BTW)
+
+
+        return {"Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
+
+                "Engineeringkosten": engineering_cost.to_dict(),
+
+                "Overige bijkomende kosten": general_cost.to_dict(),
+
+                "Risicoreservering": risk_cost,
+
+                "Vastgoedkosten": {"Panden": nb_houses * COST_HOUSES,
                                    "Wegen": road_removal_cost,
                                    },
                 }
 
-    def calc_engineering_cost(self, total_direct_cost: float, complexity: str, catalogue)-> dict:
+
+    def calc_engineering_cost(self, total_direct_cost: float, complexity: str, catalogue) -> dict:
         """
         Calculate the engineering cost as a fraction of the total direct cost, based on the complexity and the price catalogue.
 
