@@ -94,21 +94,18 @@ class CostCalculator:
     def calc_all_construction_costs(self, groundwork_cost: float, preparation_cost: float) -> ConstructionCosts:
 
         if self.complexity == EnumerationComplexity.EASY:
-            directe_bouwkosten = groundwork_cost * self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100
+            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_bouwkosten = groundwork_cost * self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100
+            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.HARD:
-            directe_bouwkosten = groundwork_cost * self.surcharge_dict['Q-GGMOENTD'].price_percent / 100
+            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
 
-        # Helper to calculate surcharge costs
-        def surcharge(code: str) -> float:
-            return directe_bouwkosten * self.surcharge_dict[code].price_percent / 100.0
 
-        pm_cost = surcharge("Q-EKABKUKMAN")  # Project management etc.
-        general_cost = surcharge("Q-AK")     # Algemene kosten
-        risk_profit = surcharge("Q-WR")      # Winst & risico
+        pm_cost = directe_bouwkosten * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
+        general_cost = (directe_bouwkosten + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
+        risk_profit = (directe_bouwkosten + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
 
         indirecte_bouwkosten = pm_cost + general_cost + risk_profit
         total_costs = directe_bouwkosten + indirecte_bouwkosten
@@ -168,6 +165,10 @@ class CostCalculator:
         )
 
     def calc_general_costs(self, construction_cost: float) -> GeneralCosts:
+        """
+
+        :param construction_cost: Total construction cost from calc_all_construction_costs
+        """
 
         insurances = construction_cost * self.surcharge_dict['Q-VERG'].price_percent / 100.0
         cables_pipes = construction_cost * self.surcharge_dict['Q-KL'].price_percent / 100.0
@@ -192,6 +193,10 @@ class CostCalculator:
         )
 
     def calc_risk_cost(self, investering_cost: float) -> float:
+        """
+
+        :param investering_cost: Sum of the construction total cost, engineering total cost and general total costs
+        """
         if self.complexity == EnumerationComplexity.EASY:
             return investering_cost * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0
         elif self.complexity == EnumerationComplexity.MEDIUM:
