@@ -143,12 +143,8 @@ class CostCalculator:
         direct_engineering_cost = epk_cost + design_cost + research_cost
 
 
-        # Helper to calculate surcharge costs
-        def surcharge(code: str) -> float:
-            return direct_engineering_cost * self.surcharge_dict[code].price_percent / 100.0
-
-        general_cost = surcharge("Q-AK")     # Algemene kosten
-        risk_profit = surcharge("Q-WR")      # Winst & risico
+        general_cost = (direct_engineering_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
+        risk_profit = (direct_engineering_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
 
         indirect_engineering_cost = general_cost + risk_profit
         total_costs = direct_engineering_cost + indirect_engineering_cost
@@ -176,7 +172,7 @@ class CostCalculator:
         direct_general_costs = insurances + cables_pipes + damages
 
         genral_cost = direct_general_costs * self.surcharge_dict["Q-AK"].price_percent / 100.0
-        risk_profit = direct_general_costs * self.surcharge_dict["Q-WR"].price_percent / 100.0
+        risk_profit = (direct_general_costs + genral_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0
 
         indirect_general_costs = genral_cost + risk_profit
         total_general_costs = direct_general_costs + indirect_general_costs
