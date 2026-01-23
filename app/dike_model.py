@@ -152,6 +152,7 @@ class DikeModel:
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
         S0 = volumes['S0']  # surface area beyond the toe of the old dike
+        S5: # surface area of the new dike design
         """
 
         design_3d_surface = self.design_export_3d.geometry
@@ -164,13 +165,17 @@ class DikeModel:
         V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=thickness_top_layer,
                                                      thickness_clay_layer=thickness_clay_layer)
 
+        S5 = self.calculate_total_3d_surface_area().get(
+            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
+
         return {
             'V1b': V1b,
             'V2b': V2b,
             'V3': V3,
             'V4': V4,
             'V5': V5,
-            'S0': S0
+            'S0': S0,
+            'S5': S5
         }
 
     def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
@@ -188,80 +193,36 @@ class DikeModel:
         path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
         path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
         cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
-        ground_dict = {item.code: item for item in cat.categorieen['Grondverzet']}
-        ground_dict_other = {item.code: item for item in cat.categorieen['Profielafwerking']}
-        general_construction_dict = {item.code: item for item in cat.categorieen['Algemene werkzaamheden']}
-        roads_cost_dict = {item.code: item for item in cat.categorieen['Wegen fietspaden en op-/afritten']}
-
-        Q_GV010 = ground_dict['Q-GV010'].prijs
-        Q_GV030 = ground_dict['Q-GV030'].prijs
-        Q_GV050 = ground_dict['Q-GV050'].prijs
-        Q_GV060 = ground_dict['Q-GV060'].prijs
-        Q_GV070 = ground_dict['Q-GV070'].prijs
-        Q_GV080 = ground_dict['Q-GV080'].prijs
-        Q_GV090 = ground_dict['Q-GV090'].prijs
-        Q_GV100 = ground_dict_other['Q-GV100'].prijs
-        Q_GV110 = ground_dict_other['Q-GV110'].prijs
-        Q_GV120 = ground_dict_other['Q-GV120'].prijs
-        Q_AW010 = general_construction_dict['Q-AW010'].prijs
-        Q_AW020 = general_construction_dict['Q-AW020'].prijs
-        Q_AW030 = general_construction_dict['Q-AW030'].prijs
-        ROAD_UNIT_COST = roads_cost_dict['O-413'].prijs + roads_cost_dict['O-513'].prijs
-        COST_HOUSES = 700000
 
         ### Calculate filling volumes V3, V4, V5:
         THICKNESS_TOP_LAYER = 0.2  # meters
         THICKNESS_CLAY_LAYER = 0.8  # meters
         volumes = self.calculate_all_dike_volumes(THICKNESS_TOP_LAYER, THICKNESS_CLAY_LAYER)
-        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
-        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
-        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
-        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
-        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
-        S0 = volumes['S0']  # surface area beyond the toe of the old dike
-        S5 = self.calculate_total_3d_surface_area().get(
-            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
-        ### Combine to get costs
-        preparation_cost = S0 * (Q_AW010 + Q_AW020)  # Voorbereiden terrein
-        groundwork_cost = (  # Also called Benoemde Directe BouwKosten (BDBK)
-                V1b * Q_GV010 +  # afgraven oude grasbekleding naar depot
-                V2b * Q_GV030 +  # afgraven oude kleilaag naar depot
-                V2b * Q_GV050 +  # hergebruiken oude kleilaag in nieuwe kern
-                (V5 + V1b) * Q_GV090 +  # aanvullen nieuwe kern met nieuw materiaal
-                S5 * Q_GV100 +  # profieleren van dijkkern
-                V4 * Q_GV080 +  # aanbregen nieuwe kleilaag
-                S5 * Q_GV110 +  # profileren nieuwe kleilaar
-                V1b * Q_GV060 +  # hergebruiken teelaarde in nieuwe bekleding
-                (V3 - V1b) * Q_GV070 +  # aanvullen teelaarde in nieuwe bekleding
-                S5 * (Q_GV120 - Q_AW030)  # profileren nieuwe graslaag en inzaaien
-        )
-
-        road_removal_cost = road_area * ROAD_UNIT_COST
-
+        ### Compute costs
         calculator = CostCalculator(cat, complexity)
-        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost, preparation_cost=preparation_cost)
+
+        groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
+        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost)
         engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
         general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
-
         investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
         risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
+        real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
+
 
         total_cost_excl_BTW = investering_cost + risk_cost
         print(total_cost_excl_BTW)
 
 
-        return {"Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
-
-                "Engineeringkosten": engineering_cost.to_dict(),
-
-                "Overige bijkomende kosten": general_cost.to_dict(),
-
-                "Risicoreservering": risk_cost,
-
-                "Vastgoedkosten": {"Panden": nb_houses * COST_HOUSES,
-                                   "Wegen": road_removal_cost,
-                                   },
+        return { 
+            "Directe kosten grondwerk": groundwork_cost.to_dict(),
+            "Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
+            # "Bouwkosten - constructie": #TODO
+            "Engineeringkosten": engineering_cost.to_dict(),
+            "Overige bijkomende kosten": general_cost.to_dict(),
+            "Risicoreservering": risk_cost,
+            "Vastgoedkosten": real_estate_costs.to_dict(),
                 }
 
 

@@ -9,10 +9,53 @@ class SurchargeItem:
     code: str
     price_percent: float  # renamed from prijs to make it clear it's a percentage
 
+@dataclass
+class UnitPriceItem:
+    code: str
+    price: float  # renamed from prijs to make it clear it's a percentage
+
+
+@dataclass
+class DirectCostGroundWork:
+    preparation_cost: float
+    afgraven_grasbekleding_cost: float
+    afgraven_kleilaag_cost: float
+    herkeuren_kleilaag_cost: float
+    aanvullen_kern_cost: float
+    profieleren_dijkkern_cost: float
+    aanbregen_nieuwe_kleilaag_cost: float
+    profieleren_vannieuwe_kleilaag_cost: float
+    hergebruik_teelaarde_cost: float
+    aanvullen_teelaarde_cost: float
+    profieleren_nieuwe_graslaag_cost: float
+
+    @property
+    def groundwork_cost(self) -> float:
+        """Benoemde Directe BouwKosten (BDBK)"""
+        return (
+            self.preparation_cost +
+            self.afgraven_grasbekleding_cost +
+            self.afgraven_kleilaag_cost +
+            self.herkeuren_kleilaag_cost +
+            self.aanvullen_kern_cost +
+            self.profieleren_dijkkern_cost +
+            self.aanbregen_nieuwe_kleilaag_cost +
+            self.profieleren_vannieuwe_kleilaag_cost +
+            self.hergebruik_teelaarde_cost +
+            self.aanvullen_teelaarde_cost +
+            self.profieleren_nieuwe_graslaag_cost
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize the dataclass to a dict"""
+        data = asdict(self)
+        data['groundwork_cost'] = self.groundwork_cost
+        return data
+
+
 
 @dataclass
 class ConstructionCosts:
-    preparation: float  # Voorbereiding
     groundwork: float  # Benoemde Directe BouwKosten (BDBK)
     direct_costs: float # Directe bouwkosten (DBK)
     pm_cost: float
@@ -54,6 +97,16 @@ class GeneralCosts:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
+    
+@dataclass
+class RealEstateCosts:
+    road_cost: float
+    house_cost: float
+    total_real_estate_costs: float
+
+    def to_dict(self) -> dict:
+        """Serialize the dataclass to a dict"""
+        return asdict(self)
 
 class EnumerationComplexity(Enum):
     EASY = 'makkelijke maatregel'
@@ -76,22 +129,104 @@ class CostCalculator:
         """
         self.complexity = EnumerationComplexity.from_string(complexity)
 
-        categories = [
+        categories_surcharges = [
             'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen',
             'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen',
             'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen',
         ]
 
-        all_items = []
-        for cat in categories:
-            all_items.extend(catalogue.categorieen[cat])
+        categories_unit_prices = [
+            'Grondverzet',
+            'Profielafwerking',
+            'Algemene werkzaamheden',
+            'Wegen fietspaden en op-/afritten'
+        ]
+
+        all_items_surcharges = []
+        for cat in categories_surcharges:
+            all_items_surcharges.extend(catalogue.categorieen[cat])
+
+        all_items_unit_prices = []
+        for cat in categories_unit_prices:
+            all_items_unit_prices.extend(catalogue.categorieen[cat])
 
         self.surcharge_dict: Dict[str, SurchargeItem] = {
             item.code: SurchargeItem(item.code, item.prijs)
-            for item in all_items
+            for item in all_items_surcharges
         }
 
-    def calc_all_construction_costs(self, groundwork_cost: float, preparation_cost: float) -> ConstructionCosts:
+        self.unit_price_dict: Dict[str, UnitPriceItem] = {
+            item.code: UnitPriceItem(item.code, item.prijs)
+            for item in all_items_unit_prices
+        }
+
+    def calc_real_estate_costs(self, nb_houses: float, road_area: float) -> RealEstateCosts:
+        """
+        Calculate real estate costs based on base cost and surcharge percentage.
+        """
+        ROAD_UNIT_COST = self.unit_price_dict['O-413'].price + self.unit_price_dict['O-513'].price
+        COST_HOUSES = 700000
+        return RealEstateCosts(
+            road_cost=road_area * ROAD_UNIT_COST,
+            house_cost=nb_houses * COST_HOUSES,
+            total_real_estate_costs=road_area * ROAD_UNIT_COST + nb_houses * COST_HOUSES
+        )
+
+    def calc_direct_cost_ground_work(self, volumes: dict) -> DirectCostGroundWork:
+        """
+        Calculate the benoemde directe bouwkosten for ground work based on volumes and unit prices.
+        """
+        Q_GV010 = self.unit_price_dict['Q-GV010'].price
+        Q_GV030 = self.unit_price_dict['Q-GV030'].price
+        Q_GV050 = self.unit_price_dict['Q-GV050'].price
+        Q_GV060 = self.unit_price_dict['Q-GV060'].price
+        Q_GV070 = self.unit_price_dict['Q-GV070'].price
+        Q_GV080 = self.unit_price_dict['Q-GV080'].price
+        Q_GV090 = self.unit_price_dict['Q-GV090'].price
+        Q_GV100 = self.unit_price_dict['Q-GV100'].price
+        Q_GV110 = self.unit_price_dict['Q-GV110'].price
+        Q_GV120 = self.unit_price_dict['Q-GV120'].price
+        Q_AW010 = self.unit_price_dict['Q-AW010'].price
+        Q_AW020 = self.unit_price_dict['Q-AW020'].price
+        Q_AW030 = self.unit_price_dict['Q-AW030'].price
+
+
+        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
+        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
+        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
+        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
+        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
+        S0 = volumes['S0']  # surface area beyond the toe of the old dike
+        S5 = volumes['S5']  # surface area beyond the toe of the old dike
+
+        ### Combine to get costs
+        preparation_cost = S0 * (Q_AW010 + Q_AW020)  # Voorbereiden terrein
+        afgraven_grasbekleding_cost = V1b * Q_GV010  # afgraven oude grasbekleding naar depot
+        afgraven_kleilaag_cost = V2b * Q_GV030  # afgraven oude kleilaag naar depot
+        herkeuren_kleilaag_cost = V2b * Q_GV050  # hergebruiken oude kleilaag in nieuwe kern
+        aanvullen_kern_cost = (V5 + V1b) * Q_GV090  # aanvullen nieuwe kern met nieuw materiaal
+        profieleren_dijkkern_cost = S5 * Q_GV100  # profieleren van dijkkern
+        aanbregen_nieuwe_kleilaag_cost = V4 * Q_GV080  # aanbregen nieuwe kleilaag
+        profieleren_vannieuwe_kleilaag_cost = S5 * Q_GV110  # profileren nieuwe kleilaar
+        hergebruik_teelaarde_cost = V1b * Q_GV060  # hergebruiken teelaarde in nieuwe bekleding
+        aanvullen_teelaarde_cost = (V3 - V1b) * Q_GV070  # aanvullen teelaarde in nieuwe bekleding
+        profieleren_nieuwe_graslaag_cost = S5 * (Q_GV120 - Q_AW030)  # profileren nieuwe graslaag en inzaaien
+
+        return DirectCostGroundWork(
+            preparation_cost=preparation_cost,
+            afgraven_grasbekleding_cost=afgraven_grasbekleding_cost,
+            afgraven_kleilaag_cost=afgraven_kleilaag_cost,
+            herkeuren_kleilaag_cost=herkeuren_kleilaag_cost,
+            aanvullen_kern_cost=aanvullen_kern_cost,
+            profieleren_dijkkern_cost=profieleren_dijkkern_cost,
+            aanbregen_nieuwe_kleilaag_cost=aanbregen_nieuwe_kleilaag_cost,
+            profieleren_vannieuwe_kleilaag_cost=profieleren_vannieuwe_kleilaag_cost,
+            hergebruik_teelaarde_cost=hergebruik_teelaarde_cost,
+            aanvullen_teelaarde_cost=aanvullen_teelaarde_cost,
+            profieleren_nieuwe_graslaag_cost=profieleren_nieuwe_graslaag_cost
+        )
+
+    def calc_all_construction_costs(self, groundwork_cost: float) -> ConstructionCosts:
 
         if self.complexity == EnumerationComplexity.EASY:
             directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
@@ -111,7 +246,6 @@ class CostCalculator:
         total_costs = directe_bouwkosten + indirecte_bouwkosten
 
         return ConstructionCosts(
-            preparation=preparation_cost,
             groundwork=groundwork_cost,
             direct_costs=directe_bouwkosten,
             pm_cost=pm_cost,
