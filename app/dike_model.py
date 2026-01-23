@@ -11,7 +11,7 @@ from shapely.ops import unary_union
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
-from .cost_data_classes import CostCalculator, ConstructionCosts
+from .cost_calculator import CostCalculator
 from .unit_costs_and_surcharges import load_kosten_catalogus
 from .utils import reproject_polygon_with_z
 
@@ -203,7 +203,7 @@ class DikeModel:
         calculator = CostCalculator(cat, complexity)
 
         groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
-        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost)
+        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost)
         engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
         general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
         investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
