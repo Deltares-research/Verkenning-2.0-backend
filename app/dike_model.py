@@ -1,44 +1,19 @@
-"""
-Dike volume calculation using AHN4 elevation data.
-"""
-import time
 from typing import Union
 
 import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.path import Path
-from pyproj import Transformer
+from pathlib import Path
+from matplotlib.path import Path as MplPath
 from scipy.interpolate import griddata
-from scipy.ndimage import map_coordinates, median_filter
+from scipy.ndimage import map_coordinates
 from scipy.spatial import Delaunay
-from shapely.geometry.point import Point
 from shapely.geometry.polygon import Polygon
-from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.ops import unary_union
-from shapely.prepared import prep
-
 import geopandas as gpd
 
 from .AHN_raster_API import AHN4_API
-
-transformer = Transformer.from_crs("EPSG:4326", "EPSG:28992", always_xy=True)
-transformer_rd_to_wm = Transformer.from_crs("EPSG:28992", "EPSG:3857", always_xy=True)
-
-
-def reproject_polygon_with_z(poly):
-    """
-    Reproject a Polygon Z from WGS84 to RD while keeping the Z coordinate.
-    Returns a Polygon with 3D coordinates (x_RD, y_RD, z).
-    """
-    exterior_coords_3d = []
-    for x, y, *z in poly.exterior.coords:
-        z_val = z[0] if z else 0.0
-        x_rd, y_rd = transformer.transform(x, y)
-        exterior_coords_3d.append((x_rd, y_rd, z_val))
-    # Ensure the polygon is closed
-    if exterior_coords_3d[0] != exterior_coords_3d[-1]:
-        exterior_coords_3d.append(exterior_coords_3d[0])
-    return Polygon(exterior_coords_3d)
+from .cost_calculator import CostCalculator
+from .unit_costs_and_surcharges import load_kosten_catalogus
+from .utils import reproject_polygon_with_z
 
 
 class DikeModel:
@@ -46,10 +21,6 @@ class DikeModel:
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.design_export_3d = design_export_3d
         self.design_export_3d["geometry"] = self.design_export_3d["geometry"].apply(reproject_polygon_with_z)
-
-        self.excavationVolume = 0
-        self.fillVolume = 0
-        self.totalVolumeDifference = 0
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -66,7 +37,7 @@ class DikeModel:
 
         # extract exterior coordinates, ignoring Z
         poly_coords = np.array([[px, py] for px, py, *_ in poly.exterior.coords])
-        path = Path(poly_coords)
+        path = MplPath(poly_coords)
 
         mask = path.contains_points(points)
         self.grid_2d = points[mask]
@@ -100,29 +71,15 @@ class DikeModel:
         self.elevation = elev
         return elev
 
-    def compute_volumes(self, current_elev, new_elev, cell_area=1.0):
-        """
-
-        :param current_elev: array of current elevations (AHN)
-        :param new_elev: array of new design elevations (from GIS polygons)
-        :param cell_area: grid size
-        :return:
-        """
-        dV = new_elev - current_elev
-        fill = np.sum(dV[dV > 0] * cell_area)
-        cut = np.sum(-dV[dV < 0] * cell_area)
-        return fill, cut
-
     def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
-                                  THICKNESS_TOP_LAYER: float = 0.2,
-                                  THICKNESS_CLAY_LAYER: float = 0.8) -> tuple[float, float, float]:
+                                  thickness_top_layer: float = 0.2,
+                                  thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
 
         """
         Compute the following volumes:
             - V3: volume of top layer fill (0.2m thick)
             - V4: volume of clay layer fill (0.8m thick)
             - V5: volume of sand layer fill (remaining volume below clay layer and above the current AHN surface)
-
         """
 
         clay_layer_top_surface = []
@@ -130,9 +87,9 @@ class DikeModel:
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
         for row in list(design_3d_surface):
-            clay_layer_top_surface.append(Polygon([(x, y, z - THICKNESS_TOP_LAYER) for x, y, z in row.exterior.coords]))
+            clay_layer_top_surface.append(Polygon([(x, y, z - thickness_top_layer) for x, y, z in row.exterior.coords]))
             sand_layer_top_surface.append(
-                Polygon([(x, y, z - THICKNESS_TOP_LAYER - THICKNESS_CLAY_LAYER) for x, y, z in row.exterior.coords]))
+                Polygon([(x, y, z - thickness_top_layer - thickness_clay_layer) for x, y, z in row.exterior.coords]))
 
         volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
@@ -145,11 +102,12 @@ class DikeModel:
         return V3, V4, V5
 
     def calculate_volume_v1b_v2b(self, design_3d_surface: gpd.GeoSeries, thickness_top_layer: float = 0.2,
-                                 thickness_clay_layer: float = 0.8) -> tuple[float, float]:
+                                 thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
         """
         Compute re-usable volumes:
             - V1b
             - V2b
+            - S0: surface area beyond the toe of the old dike
         Assumption is made to determine where the toe location of the old dike is located.
         The volume V1b and V2b are calculated based on the surface area of the current AHN surface, times the thickness of each layers.
         """
@@ -182,50 +140,120 @@ class DikeModel:
 
         V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
         V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
-        return V1b, V2b
+        S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
+        return V1b, V2b, S0
 
-    def calculate_all_dike_volumes(self):
-        THICKNESS_TOP_LAYER = 0.2  # meters
-        THICKNESS_CLAY_LAYER = 0.8  # meters
+    def calculate_all_dike_volumes(self, thickness_top_layer: float = 0.2, thickness_clay_layer: float = 0.8) -> dict:
+        """
+        Calculate all dike volumes:
+        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
+        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
+        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
+        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
+        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
+        S0 = volumes['S0']  # surface area beyond the toe of the old dike
+        S5: # surface area of the new dike design
+        """
 
         design_3d_surface = self.design_export_3d.geometry
 
         ##### Calculate filling volumes V3, V4, V5:
-        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, THICKNESS_TOP_LAYER=THICKNESS_TOP_LAYER,
-                                                    THICKNESS_CLAY_LAYER=THICKNESS_CLAY_LAYER)
+        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, thickness_top_layer=thickness_top_layer,
+                                                    thickness_clay_layer=thickness_clay_layer)
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=THICKNESS_TOP_LAYER,
-                                                 thickness_clay_layer=THICKNESS_CLAY_LAYER)
+        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=thickness_top_layer,
+                                                     thickness_clay_layer=thickness_clay_layer)
+
+        S5 = self.calculate_total_3d_surface_area().get(
+            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
         return {
             'V1b': V1b,
             'V2b': V2b,
             'V3': V3,
             'V4': V4,
-            'V5': V5
+            'V5': V5,
+            'S0': S0,
+            'S5': S5
         }
 
-    def compute_cost(self, nb_houses_intersected: int, road_area: int):
+    def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
+        """
+        Calculate all the cost for a dike model: groundwork, construction, engineering, real estate costs.
 
-        STARTING_COST = 4000
-        SURCHARGE_FACTOR = 1
+        input:
+            nb_houses_intersected: number of houses intersected by the dike (for real estate costs)
+            road_area: area of roads to be removed (m²)
+            complexity: 'easy', 'medium', 'complex' (for engineering costs with opslagfactor)
+        output:
+            cost structure dictionary
+        """
 
-        ##### Calculate filling volumes V3, V4, V5:
-        volumes = self.calculate_all_dike_volumes()
-        V3 = volumes['V3']
-        V4 = volumes['V4']
-        V5 = volumes['V5']
-        V = V3 + V4 + V5
+        path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
+        path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
+        cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
 
-        UNIT_COST_ROAD_SURFACE = 50  # €/m²
-        UNIT_COST_GROUND_SURFACE = 100  # €/m²
+        ### Calculate filling volumes V3, V4, V5:
+        THICKNESS_TOP_LAYER = 0.2  # meters
+        THICKNESS_CLAY_LAYER = 0.8  # meters
+        volumes = self.calculate_all_dike_volumes(THICKNESS_TOP_LAYER, THICKNESS_CLAY_LAYER)
 
-        cost = (road_area * UNIT_COST_ROAD_SURFACE) + (V * UNIT_COST_GROUND_SURFACE) + STARTING_COST
+        ### Compute costs
+        calculator = CostCalculator(cat, complexity)
 
-        return cost
+        groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
+        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost)
+        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
+        general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
+        investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
+        real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
 
-    def calculate_volume_matthias(self):
+
+        total_cost_excl_BTW = investering_cost + risk_cost
+        print(total_cost_excl_BTW)
+
+
+        return { 
+            "Directe kosten grondwerk": groundwork_cost.to_dict(),
+            "Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
+            # "Bouwkosten - constructie": #TODO
+            "Engineeringkosten": engineering_cost.to_dict(),
+            "Overige bijkomende kosten": general_cost.to_dict(),
+            "Risicoreservering": risk_cost,
+            "Vastgoedkosten": real_estate_costs.to_dict(),
+                }
+
+
+    def calc_engineering_cost(self, total_direct_cost: float, complexity: str, catalogue) -> dict:
+        """
+        Calculate the engineering cost as a fraction of the total direct cost, based on the complexity and the price catalogue.
+
+        :param total_direct_cost: Total direct construction cost
+        :param complexity: Complexity level ('makkelijke maatregel', 'gemiddelde maatregel', 'moeilijke maatregel')
+        :param catalogue: Cost catalogue with opslag factors
+        """
+
+        opslag_factor_dict = {item.code: item for item in catalogue.categorieen[
+            'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen']}
+        if complexity == 'makkelijke maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG1"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON1"].prijs
+        elif complexity == 'gemiddelde maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG2"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON2"].prijs
+
+        elif complexity == 'moeilijke maatregel':
+            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG3"].prijs
+            engineering_cost_schets = opslag_factor_dict["Q-ENGON3"].prijs
+
+        else:
+            raise ValueError(f"Unknown complexity level: {complexity}")
+        return {"engineering_cost_EPK": total_direct_cost * engineering_cost_EPK / 100.0,
+                "engineering_cost_schets": total_direct_cost * engineering_cost_schets / 100.0}
+
+    def calculate_volume(self):
         """
         Compute fill and excavation volumes for all polygons using a single global grid
         and single AHN raster query.
@@ -243,14 +271,10 @@ class DikeModel:
         combined_poly = unary_union(surface)
 
         # 2) Generate a global grid
-        time1 = time.time()
         grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-        time2 = time.time()
 
         # 3) Get the AHN elevations for the grid
-        time3 = time.time()
         elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-        time4 = time.time()
 
         nan_count = np.isnan(elev_global).sum()
         valid_count = len(elev_global) - nan_count
@@ -263,7 +287,7 @@ class DikeModel:
         masks = []
         for row in list(surface):
             poly = row
-            path = Path(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
+            path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
             mask = path.contains_points(grid_pts_global)
             points_in_poly = np.sum(mask)
             masks.append(mask)
@@ -309,11 +333,6 @@ class DikeModel:
             tot_volume_fill += fill
             tot_volume_cut += cut
 
-        print(f"\n=== FINAL TOTALS ===")
-        print(f"Total fill (m³): {tot_volume_fill:.2f}")
-        print(f"Total cut (m³): {tot_volume_cut:.2f}")
-        print(f"Net difference (m³): {tot_volume_fill - tot_volume_cut:.2f}")
-
         return {
             'fill_volume': tot_volume_fill,
             'cut_volume': tot_volume_cut,
@@ -340,13 +359,11 @@ class DikeModel:
 
         # 2) Generate a global grid
         grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-        print(f"Grid: {len(grid_pts_global)} points, size={self.grid_size}m")
 
         # 3) Get the AHN elevations for the grid
         elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
 
         valid_count = len(elev_global) - np.isnan(elev_global).sum()
-        print(f"Valid elevations: {valid_count}/{len(elev_global)}")
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
@@ -356,7 +373,7 @@ class DikeModel:
         masks = []
         for idx, row in self.design_export_3d.iterrows():
             poly = row.geometry
-            path = Path(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
+            path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
             mask = path.contains_points(grid_pts_global)
             masks.append(mask)
 
@@ -395,7 +412,6 @@ class DikeModel:
             points_above_3d = np.column_stack([pts_xy, z_vals])
             above_ground_points.extend(points_above_3d.tolist())
 
-        print(f"Points above ground: {len(above_ground_points)}")
         total_area = len(above_ground_points) * (self.grid_size ** 2)
 
         if len(above_ground_points) < 3:
@@ -461,10 +477,6 @@ class DikeModel:
 
                 features.append(feature)
 
-            print(f"Created {len(features)} alpha shape polygon(s)")
-
-            print(f"Total ruimtebeslag area: {total_area:.2f} m²")
-
             return {
                 'type': 'FeatureCollection',
                 'features': features,
@@ -515,7 +527,6 @@ class DikeModel:
             coords_3d = row.geometry.exterior.coords
             total_area += planar_polygon_area_3d(coords_3d)
 
-        print(f"Total 3D surface area (planar): {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}
 
     def calculate_3d_surface_area_above_ahn(self, grid_size: float = None):
@@ -580,168 +591,4 @@ class DikeModel:
             if len(clipped_coords) >= 3:
                 total_area += planar_polygon_area_3d(clipped_coords)
 
-        print(f"Total 3D surface area above AHN: {total_area:.2f} m²")
         return {'total_3d_area_m2': total_area}
-
-    def plot_existing_and_new_surface(
-            self,
-            title="Existing vs New Dike Surface"
-    ):
-        """
-        Plot both the existing (AHN) elevation surface and the new 3D design surface in matplotlib
-
-        Parameters
-        ----------
-        grid_points : Nx2 array
-            Grid points used for AHN sampling.
-        current_elev : array
-            Elevations from AHN corresponding to grid_points.
-        design_polygons : list(Polygon)
-            List of 3D shapely Polygons representing the new dike geometry.
-        title : str
-            Plot title.
-        """
-
-        # ----------------------------------------
-        # 1. Prepare AHN grid (irregular -> regular grid)
-        # ----------------------------------------
-
-        grid_points = self.grid_2d
-        current_elev = self.elevation
-        design_polygons = self.design_export_3d["geometry"].tolist()
-
-        X = grid_points[:, 0]
-        Y = grid_points[:, 1]
-        Z = current_elev
-
-        xi = np.linspace(X.min(), X.max(), 200)
-        yi = np.linspace(Y.min(), Y.max(), 200)
-        XI, YI = np.meshgrid(xi, yi)
-
-        ZI_ahn = griddata((X, Y), Z, (XI, YI), method='linear')
-
-        # ----------------------------------------
-        # 2. Extract all vertices of new 3D polygons
-        # ----------------------------------------
-        Xn, Yn, Zn = [], [], []
-
-        for poly in design_polygons:
-            for x, y, z in poly.exterior.coords:
-                Xn.append(x)
-                Yn.append(y)
-                Zn.append(z)
-
-        Xn = np.array(Xn)
-        Yn = np.array(Yn)
-        Zn = np.array(Zn)
-
-        # Interpolate new surface onto same grid for comparison
-        ZI_new = griddata((Xn, Yn), Zn, (XI, YI), method='linear')
-
-        # ----------------------------------------
-        # 3. Plot both surfaces
-        # ----------------------------------------
-        fig = plt.figure(figsize=(12, 10))
-        ax = fig.add_subplot(111, projection="3d")
-
-        surf1 = ax.plot_surface(
-            XI, YI, ZI_ahn,
-            # cmap="terrain",
-            alpha=0.7,
-            linewidth=0
-        )
-
-        surf2 = ax.plot_surface(
-            XI, YI, ZI_new,
-            # cmap="viridis",
-            alpha=0.5,
-            linewidth=0
-        )
-
-        ax.set_title(title)
-        ax.set_xlabel("X (RD)")
-        ax.set_ylabel("Y (RD)")
-        ax.set_zlabel("Elevation (m)")
-
-        plt.show()
-
-    def plot_existing_and_new_surface_plotly(
-            self,
-            grid_resolution=200,
-            title="Existing vs New Dike Surface"
-    ):
-        """
-        Dynamic 3D surface plot using Plotly for AHN and new design surfaces.
-        """
-
-        # -----------------------------
-        # 1. Prepare AHN surface
-        # -----------------------------
-        grid_points = self.grid_size
-        # current_elev = self.elevation
-        design_polygons = self.design_export_3d["geometry"].tolist()
-
-        X = grid_points[:, 0]
-        Y = grid_points[:, 1]
-        # Z = current_elev
-
-        xi = np.linspace(X.min(), X.max(), grid_resolution)
-        yi = np.linspace(Y.min(), Y.max(), grid_resolution)
-        XI, YI = np.meshgrid(xi, yi)
-
-        # ZI_ahn = griddata((X, Y), Z, (XI, YI), method='linear')
-
-        # -----------------------------
-        # 2. Prepare new design surface
-        # -----------------------------
-        Xn, Yn, Zn = [], [], []
-        for poly in design_polygons:
-            for x, y, z in poly.exterior.coords:
-                Xn.append(x)
-                Yn.append(y)
-                Zn.append(z)
-
-        Xn = np.array(Xn)
-        Yn = np.array(Yn)
-        Zn = np.array(Zn)
-
-        ZI_new = griddata((Xn, Yn), Zn, (XI, YI), method='linear')
-
-        # -----------------------------
-        # 3. Create Plotly surfaces
-        # -----------------------------
-        import plotly.graph_objects as go
-        fig = go.Figure()
-
-        # fig.add_trace(
-        #     go.Surface(
-        #         z=ZI_ahn,
-        #         x=XI,
-        #         y=YI,
-        #         opacity=0.8,
-        #         name="Existing AHN"
-        #     )
-        # )
-
-        fig.add_trace(
-            go.Surface(
-                z=ZI_new,
-                x=XI,
-                y=YI,
-                opacity=0.6,
-                name="New Dike Design"
-            )
-        )
-
-        fig.update_layout(
-            title=title,
-            scene=dict(
-                xaxis_title="X (RD)",
-                yaxis_title="Y (RD)",
-                zaxis_title="Elevation (m)",
-                aspectmode="auto"  # automatically scales axes
-            ),
-            autosize=True
-        )
-
-        fig.show()

@@ -70,7 +70,7 @@ print(f"Time taken: {t2 - t1} seconds")
 
 
 d = DikeModel(design_export_3d)
-d.calculate_volume_matthias()
+d.calculate_volume()
 d.plot_existing_and_new_surface_plotly()
 t3 = time.time()
 print(f"Total volume calculation time: {t3 - t2} seconds")

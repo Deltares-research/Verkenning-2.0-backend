@@ -5,12 +5,11 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import geopandas as gpd
 from shapely.geometry import shape
-import json
-import time
+
 import os
 from dotenv import load_dotenv
 
-from app.volume_calc import DikeModel
+from app.dike_model import DikeModel
 
 load_dotenv()
 
@@ -86,8 +85,7 @@ class DesignCalculationResult(BaseModel):
     ruimtebeslag_2d_points: List[Any]  # Points data for calculting ruimtebeslag in the frontend
 
 class DesignCostResult(BaseModel):
-    total_cost: float
-    breakdown: Dict[str, float]
+    breakdown: dict  # Please dont change type, Pydantic is being very annoying
 
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
@@ -131,7 +129,7 @@ async def calculate_designs(
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         print(f"DEBUG: Result type: {type(result)}")
         print(f"DEBUG: Result value: {result}")
@@ -218,7 +216,7 @@ async def debug_calculate_volume(
         
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
         dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume_matthias()
+        result = dike_model.calculate_volume()
         
         return {
             "result_type": str(type(result)),
@@ -235,8 +233,8 @@ async def debug_calculate_volume(
 @app.post("/api/cost_calculation", response_model=DesignCostResult)
 async def calculate_total_cost(
         geojson: GeoJSONInput,
+        complexity: str,
         road_surface: float,
-        ruimtebeslag_area: float,
         number_houses: int,
         api_key: str = Depends(verify_api_key)
 ):
@@ -252,13 +250,16 @@ async def calculate_total_cost(
             features.append({'geometry': geom, **feature.properties})
 
         gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
+        print(1111111111111)
         dike_model = DikeModel(gdf)
 
-        total_cost = dike_model.compute_cost(road_surface, ruimtebeslag_area)
+        cost_breakdown = dike_model.compute_cost(road_area=road_surface,
+                                                 complexity=complexity,
+                                                 nb_houses=number_houses)
+        print(cost_breakdown)
 
         return DesignCostResult(
-            total_cost=total_cost,
-            breakdown={}
+            breakdown=cost_breakdown
         )
 
     except Exception as e:

@@ -2,6 +2,8 @@
 import csv
 import json
 import re
+from pathlib import Path
+
 
 #Note: this function should be run when updating the eenheidsprijzen.csv file and/or the opslagfactoren csv are updated.
 def parse_percentage(value: str) -> float:
@@ -128,10 +130,10 @@ def csv_to_nested_json(csv_path: str, json_path: str):
     return catalog
 
 if __name__ == "__main__":
-    csv_path = "app/datasets/eenheidsprijzen.csv"
-    json_path = "app/datasets/eenheidsprijzen.json"
+    csv_path = Path(__file__).parent.joinpath("eenheidsprijzen.csv")
+    json_path = Path(__file__).parent.joinpath("eenheidsprijzen.json")
     csv_to_nested_json(csv_path, json_path)
 
-    csv_path_opslag = "app/datasets/opslagfactoren.csv"
-    json_path_opslag = "app/datasets/opslagfactoren.json"
+    csv_path_opslag = Path(__file__).parent.joinpath("opslagfactoren.csv")
+    json_path_opslag = Path(__file__).parent.joinpath("opslagfactoren.json")
     csv_to_nested_json(csv_path_opslag, json_path_opslag)

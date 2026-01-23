@@ -102,7 +102,7 @@ print("\nInitializing DikeModel...")
 dike_model = DikeModel(gdf)
 
 print("\nCalculating volume...")
-result = dike_model.calculate_volume_matthias()
+result = dike_model.calculate_volume()
 
 print("\n=== RESULTS ===")
 print(f"Total volume: {result.get('total_volume', 0):.2f} m³")

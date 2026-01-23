@@ -36,6 +36,23 @@ Dependencies:
 Example usage at the bottom.
 """
 
+from owslib.wcs import WebCoverageService
+from shapely.geometry import LineString
+from io import BytesIO
+import numpy as np
+import time
+import warnings
+
+try:
+    import rasterio
+    from rasterio.io import MemoryFile
+    from rasterio.transform import Affine
+    RASTERIO_AVAILABLE = True
+except Exception:
+    RASTERIO_AVAILABLE = False
+    from PIL import Image
+
+from scipy.ndimage import map_coordinates
 
 
 class AHN4_API:
