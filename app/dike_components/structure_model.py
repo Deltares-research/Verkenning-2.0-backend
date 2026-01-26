@@ -4,6 +4,7 @@ from app.unit_costs_and_surcharges import load_kosten_catalogus
 from ..AHN_raster_API import AHN4_API
 from ..projection_transformation import transform_to_rd
 import numpy as np
+from app.cost_calculator import StructureCosts
 
 class StructureModel:
     valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm']
@@ -40,6 +41,8 @@ class StructureModel:
         self.get_screen_length()
 
         self.cost_catalog = load_kosten_catalogus()
+
+        self.set_cost_function_parameters()
         
     def determine_length_from_depth(self, ahn_type = 'AHN4'):
         '''Determine the length of the structure based on depth and AHN data.'''
@@ -62,8 +65,12 @@ class StructureModel:
         else:
             raise ValueError("Niet geimplementeerd voor andere types dan 'mean'.")
 
-    def compute_directe_bouwkosten(self, c, d, z) -> float:
-        raise NotImplementedError("This method should be implemented in subclasses.")
+    def compute_benoemde_directe_bouwkosten(self, c, d, z) -> float:
+        vaklengte = self.length
+        wandlengte = self.wandlengte
+        totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
+        
+        return StructureCosts(directe_kosten_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
 
         
     
