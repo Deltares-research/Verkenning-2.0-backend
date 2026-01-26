@@ -101,9 +101,9 @@ Q-GC1A.100,Damwand 2m,m¹,€ 414.87
 def test_load_kosten_catalogus():
     catalogus = load_kosten_catalogus()
     assert isinstance(catalogus, KostenCatalogus)
-    assert "Damwandconstructies (ruw)" in catalogus.categorieen
+    assert "Damwandconstructies (vereenvoudigd)" in catalogus.categorieen
     assert "Grondverzet" in catalogus.categorieen
-    assert len(catalogus.categorieen["Damwandconstructies (ruw)"]) > 0
+    assert len(catalogus.categorieen["Damwandconstructies (vereenvoudigd)"]) > 0
     assert len(catalogus.categorieen["Grondverzet"]) > 0
 
     # Check that items are of type KostenItem
@@ -117,9 +117,9 @@ def test_load_kosten_catalogus():
 
 def test_number_of_items_in_categories():
     catalogus = load_kosten_catalogus()
-    damwand_items = catalogus.categorieen.get("Damwandconstructies (ruw)", [])
+    damwand_items = catalogus.categorieen.get("Damwandconstructies (vereenvoudigd)", [])
     grondverzet_items = catalogus.categorieen.get("Grondverzet", [])
     opslagfactoren_constructies = catalogus.categorieen.get("Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen", [])
-    assert len(damwand_items) == 20  # Expecting 20 items in Damwandconstructies
+    assert len(damwand_items) == 9  # Expecting 20 items in Damwandconstructies
     assert len(grondverzet_items) == 8  # Expecting at least 8 items in Grondverzet
     assert len(opslagfactoren_constructies) == 6  # Expecting 6 percentage items in opslagfactoren_constructies
