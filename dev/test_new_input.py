@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import json
 import geopandas as gpd
 from shapely.geometry import shape
-from app.dike_model import DikeModel
+from app.dike_components.dike_model import DikeModel
 
 # New input data
 input_geojson = {

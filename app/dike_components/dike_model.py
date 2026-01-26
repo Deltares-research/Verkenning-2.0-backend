@@ -10,10 +10,10 @@ from shapely.geometry.polygon import Polygon
 from shapely.ops import unary_union
 import geopandas as gpd
 
-from .AHN_raster_API import AHN4_API
-from .cost_calculator import CostCalculator
-from .unit_costs_and_surcharges import load_kosten_catalogus
-from .utils import reproject_polygon_with_z
+from ..AHN_raster_API import AHN4_API
+from ..cost_calculator import CostCalculator
+from ..unit_costs_and_surcharges import load_kosten_catalogus
+from ..utils import reproject_polygon_with_z
 
 
 class DikeModel:
@@ -203,10 +203,12 @@ class DikeModel:
         calculator = CostCalculator(cat, complexity)
 
         groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
-        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost)
-        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
-        general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
-        investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+        structure_costs = calculator.calc_structure_costs(complexity=complexity)
+
+        total_direct_construction_cost = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost) #add something
+        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.total_costs)
+        general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.total_costs)
+        investering_cost = total_direct_construction_cost.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
         risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
         real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
 
@@ -217,8 +219,8 @@ class DikeModel:
 
         return { 
             "Directe kosten grondwerk": groundwork_cost.to_dict(),
-            "Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
-            # "Bouwkosten - constructie": #TODO
+            "Directe kosten constructies": structure_costs.to_dict(),
+            "Indirecte bouwkosten": total_direct_construction_cost.to_dict(),
             "Engineeringkosten": engineering_cost.to_dict(),
             "Overige bijkomende kosten": general_cost.to_dict(),
             "Risicoreservering": risk_cost,

@@ -2,7 +2,7 @@ import pytest
 import geopandas as gpd
 from shapely.geometry import shape
 
-from app.dike_model import DikeModel
+from app.dike_components.dike_model import DikeModel
 
 
 @pytest.fixture(scope="module")

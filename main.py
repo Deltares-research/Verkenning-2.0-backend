@@ -9,7 +9,7 @@ from shapely.geometry import shape
 import os
 from dotenv import load_dotenv
 
-from app.dike_model import DikeModel
+from app.dike_components.dike_model import DikeModel
 
 load_dotenv()
 
