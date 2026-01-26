@@ -6,8 +6,8 @@ from shapely.geometry import shape
 import json
 import numpy as np
 from pathlib import Path
-from app.structures.structure_model import StructureModel
-from app.structures.onverankerde_damwand_model import OnverankerdeDamwandModel
+from app.dike_components.structure_model import StructureModel
+from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
 
 #define test for reading the geojson with properties, and check if the properties are correct
 @pytest.mark.parametrize("filepath, expected_diepte, expected_type", [

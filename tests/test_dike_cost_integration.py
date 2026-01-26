@@ -2,7 +2,7 @@ import pytest
 import geopandas as gpd
 from shapely.geometry import shape
 
-from app.dike_components.dike_model import DikeModel
+from app.dike_components.ground_model import GroundModel
 
 
 @pytest.fixture(scope="module")
@@ -62,7 +62,7 @@ def dike_model():
         features.append({"geometry": geom, **feature["properties"]})
 
     gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
-    model = DikeModel(gdf)
+    model = GroundModel(gdf)
     model.calculate_volume()
 
     return model
