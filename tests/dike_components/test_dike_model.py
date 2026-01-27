@@ -38,32 +38,33 @@ def test_dike_model_initialization_with_ground_only(gdf_ground):
     assert not hasattr(dike_model, 'structure_model')
 
 def test_dike_model_cost_computation_with_ground_only(gdf_ground):
-    dike_model = DikeModel(_3d_ground_polygon = gdf_ground)
-    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
+    dike_model = DikeModel(_3d_ground_polygon = gdf_ground, complexity='makkelijke maatregel')
+    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
     np.testing.assert_allclose(sum(cost_dict['Directe kosten grondwerk'].values()), 152979.76)
+    np.testing.assert_allclose(cost_dict['Directe kosten grondwerk']['totale_BDBK_grondwerk'], 76489.88)
     assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
     assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
 
 def test_dike_model_cost_computation_with_structure_only(gdf_structure):
-    dike_model = DikeModel(_2d_structure = gdf_structure)
-    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
+    dike_model = DikeModel(_2d_structure = gdf_structure, complexity='makkelijke maatregel')
+    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
     assert sum(cost_dict['Directe kosten grondwerk'].values()) == 0.0
     np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 417198.65)
     assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
 
 def test_dike_model_cost_computation_with_both(gdf_structure, gdf_ground):
-    dike_model = DikeModel(_3d_ground_polygon = gdf_ground, _2d_structure = gdf_structure)
-    cost_dict = dike_model.compute_cost(nb_houses=5, road_area=15, complexity='makkelijke maatregel')
+    dike_model = DikeModel(_3d_ground_polygon = gdf_ground, _2d_structure = gdf_structure, complexity='makkelijke maatregel')
+    cost_dict = dike_model.compute_cost(nb_houses=5, road_area=15)
 
     np.testing.assert_allclose(float(sum(cost_dict['Directe kosten grondwerk'].values())), 152979.76)
     np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 417198.65)
     np.testing.assert_allclose(float(sum(cost_dict['Vastgoedkosten'].values())), 7002093.7)
 
 def test_dike_model_cost_computation_with_none():
-    dike_model = DikeModel()
-    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
+    dike_model = DikeModel(complexity='makkelijke maatregel')
+    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
     assert sum(cost_dict['Directe kosten grondwerk'].values()) == 0.0
     assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
@@ -87,7 +88,42 @@ def test_initialize_dike_model_with_invalid_type(gdf_structure):
 def test_dike_model_cost_computation_with_heavescreen(gdf_structure):
     gdf_structure_heavescreen = gdf_structure.copy()
     gdf_structure_heavescreen.loc[0,'type'] = 'Heavescherm'
-    dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen)
-    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
+    dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen, complexity='makkelijke maatregel')
+    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
     np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 375517.53)  #example value
+
+def test_dike_model_cost_computation_with_verankerde_damwand_is_more_expensive_than_onverankerde(gdf_structure):
+    gdf_structure_verankerde = gdf_structure.copy()
+    gdf_structure_verankerde.loc[0,'type'] = 'Verankerde damwand'
+
+    dike_model_onverankerde = DikeModel(_2d_structure = gdf_structure, complexity='makkelijke maatregel')
+    cost_dict_onverankerde = dike_model_onverankerde.compute_cost(nb_houses=0, road_area=0)
+
+    dike_model_verankerde = DikeModel(_2d_structure = gdf_structure_verankerde, complexity='makkelijke maatregel')
+    cost_dict_verankerde = dike_model_verankerde.compute_cost(nb_houses=0, road_area=0)
+
+    assert float(sum(cost_dict_verankerde['Directe kosten constructies'].values())) > float(sum(cost_dict_onverankerde['Directe kosten constructies'].values()))
+
+def test_opslagfactoren_for_structures_should_be_identical(gdf_structure):
+    #onverankerd vs verankerd
+    dike_model_onverankerde = DikeModel(_2d_structure = gdf_structure, complexity='makkelijke maatregel')
+    
+    gdf_structure_verankerde = gdf_structure.copy()
+    gdf_structure_verankerde.loc[0,'type'] = 'Verankerde damwand'
+    dike_model_verankerde = DikeModel(_2d_structure = gdf_structure_verankerde, complexity='makkelijke maatregel')
+
+    cost_dict_onverankerde = dike_model_onverankerde.compute_cost(nb_houses=0, road_area=0)
+    cost_dict_verankerde = dike_model_verankerde.compute_cost(nb_houses=0, road_area=0)
+
+    #compare Engieeringkosten by normalizing with Directe kosten constructies
+    cost_keys = ['epk_cost', 'design_cost', 'research_cost']
+    for key in cost_keys:
+        np.testing.assert_allclose(
+            cost_dict_onverankerde['Engineeringkosten'][key] / cost_dict_onverankerde['Directe kosten constructies']['totale_BDBK_constructie'],
+            cost_dict_verankerde['Engineeringkosten'][key] / cost_dict_verankerde['Directe kosten constructies']['totale_BDBK_constructie'],
+            rtol=1e-2
+        )
+
+
+

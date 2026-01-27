@@ -43,75 +43,75 @@ def test_complexity_parsing():
 def test_construction_cost_easy(calculator_easy):
     costs = calculator_easy.calc_all_construction_costs(1000, 0)
 
-    assert costs.indirect_costs > 0
-    assert costs.total_costs > costs.direct_costs
-    assert costs.total_costs == pytest.approx(1365.526464)
+    assert costs.indirecte_bouwkosten > 0
+    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
+    assert costs.totale_bouwkosten == pytest.approx(1365.526464)
 
 def test_construction_cost_medium(calculator_medium):
     costs = calculator_medium.calc_all_construction_costs(1000, 0)
 
-    assert costs.indirect_costs > 0
-    assert costs.total_costs > costs.direct_costs
-    assert costs.total_costs == pytest.approx(1392.5665920000001)
+    assert costs.indirecte_bouwkosten > 0
+    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
+    assert costs.totale_bouwkosten == pytest.approx(1392.5665920000001)
 
 def test_construction_cost_hard(calculator_hard):
     costs = calculator_hard.calc_all_construction_costs(1000, 0)
 
-    assert costs.indirect_costs > 0
-    assert costs.total_costs > costs.direct_costs
-    assert costs.total_costs == pytest.approx(1419.60672)
+    assert costs.indirecte_bouwkosten > 0
+    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
+    assert costs.totale_bouwkosten == pytest.approx(1419.60672)
 
 def test_construction_cost_hard_structure(calculator_hard):
     costs = calculator_hard.calc_all_construction_costs(0, 1000)
 
-    assert costs.indirect_costs > 0
-    assert costs.total_costs > costs.direct_costs
-    assert costs.total_costs == pytest.approx(1419.60672)
+    assert costs.indirecte_bouwkosten > 0
+    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
+    assert costs.totale_bouwkosten == pytest.approx(1419.60672)
 
 def test_engineering_cost_easy(calculator_easy):
-    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).totale_bouwkosten
     costs = calculator_easy.calc_all_engineering_costs(constr_cost)
 
     assert costs.total_engineering_costs == pytest.approx(229.23656440492343)
 
 def test_engineering_cost_medium(calculator_medium):
-    constr_cost = calculator_medium.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_medium.calc_all_construction_costs(1000, 0).totale_bouwkosten
     costs = calculator_medium.calc_all_engineering_costs(constr_cost)
 
     assert costs.total_engineering_costs == pytest.approx(312.224191681023)
 
 def test_engineering_cost_medium(calculator_medium):
-    constr_cost = calculator_medium.calc_all_construction_costs(500, 500).total_costs
+    constr_cost = calculator_medium.calc_all_construction_costs(500, 500).totale_bouwkosten
     costs = calculator_medium.calc_all_engineering_costs(constr_cost)
 
     assert costs.total_engineering_costs == pytest.approx(312.224191681023)
 
 def test_engineering_cost_hard(calculator_hard):
-    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).totale_bouwkosten
     costs = calculator_hard.calc_all_engineering_costs(constr_cost)
 
     assert costs.total_engineering_costs == pytest.approx(398.25835446652417)
 
 def test_general_cost_easy(calculator_easy):
-    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).totale_bouwkosten
     costs = calculator_easy.calc_general_costs(constr_cost)
 
     assert costs.total_general_costs == pytest.approx(123.08003457982463)
 
 def test_general_cost_medium(calculator_medium):
-    constr_cost = calculator_medium.calc_all_construction_costs(500,500).total_costs
+    constr_cost = calculator_medium.calc_all_construction_costs(500,500).totale_bouwkosten
     costs = calculator_medium.calc_general_costs(constr_cost)
 
     assert costs.total_general_costs == pytest.approx(125.51726298734592)
 
 def test_general_cost_hard(calculator_hard):
-    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).totale_bouwkosten
     costs = calculator_hard.calc_general_costs(constr_cost)
 
     assert costs.total_general_costs == pytest.approx(127.9544913948672)
 
 def test_total_cost_easy(calculator_easy):
-    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_easy.calc_all_construction_costs(1000, 0).totale_bouwkosten
     eng_cost = calculator_easy.calc_all_engineering_costs(constr_cost).total_engineering_costs
     gen_cost = calculator_easy.calc_general_costs(constr_cost).total_general_costs
     total_investment = constr_cost + eng_cost + gen_cost
@@ -124,7 +124,7 @@ def test_total_cost_easy(calculator_easy):
     assert total_cost_excl_BTW == pytest.approx(1889.6273692832228)
 
 def test_total_cost_medium(calculator_medium):
-    constr_cost = calculator_medium.calc_all_construction_costs(500, 500).total_costs
+    constr_cost = calculator_medium.calc_all_construction_costs(500, 500).totale_bouwkosten
     eng_cost = calculator_medium.calc_all_engineering_costs(constr_cost).total_engineering_costs
     gen_cost = calculator_medium.calc_general_costs(constr_cost).total_general_costs
     total_investment = constr_cost + eng_cost + gen_cost
@@ -137,7 +137,7 @@ def test_total_cost_medium(calculator_medium):
     assert total_cost_excl_BTW == pytest.approx(2104.8542536686246)
 
 def test_total_cost_hard(calculator_hard):
-    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).total_costs
+    constr_cost = calculator_hard.calc_all_construction_costs(1000, 0).totale_bouwkosten
     eng_cost = calculator_hard.calc_all_engineering_costs(constr_cost).total_engineering_costs
     gen_cost = calculator_hard.calc_general_costs(constr_cost).total_general_costs
     total_investment = constr_cost + eng_cost + gen_cost

@@ -10,7 +10,7 @@ class StructureModel:
     valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm']
 
     '''Model for calculating properties of structures. Structure should contain of one single line segment with properties.'''
-    def __init__(self, location: gpd.GeoDataFrame, complexity: str = 'gemiddeld'):
+    def __init__(self, location: gpd.GeoDataFrame, complexity: str = 'gemiddelde maatregel'):
         if len(location) != 1:
             raise ValueError("Location must contain exactly one line segment.")
         self.location = location
@@ -58,7 +58,7 @@ class StructureModel:
         """Calculate the length of the structure that is below the specified depth."""
         #get elevation
         self.determine_length_from_depth()
-        
+
         # Calculate the length of the structure that is below the specified depth
         
         #get Z values from elevation LineString

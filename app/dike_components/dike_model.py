@@ -13,8 +13,9 @@ from pathlib import Path
 class DikeModel:
 
     '''Model representing a dike with associated ground and structure models.'''
-    def __init__(self, _3d_ground_polygon: gpd.GeoDataFrame = None, _2d_structure: gpd.GeoDataFrame = None, grid_size: float = 0.525, complexity: str = 'gemiddeld'):
+    def __init__(self, _3d_ground_polygon: gpd.GeoDataFrame = None, _2d_structure: gpd.GeoDataFrame = None, grid_size: float = 0.525, complexity: str = 'gemiddelde maatregel'):
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
+        self.complexity = complexity
         if _3d_ground_polygon is not None:
             self._3d_ground_polygon = _3d_ground_polygon
             self.ground_model = GroundModel(_3d_ground_polygon, grid_size=grid_size)
@@ -30,7 +31,8 @@ class DikeModel:
             else:
                 raise ValueError(f"Onbekend constructietype: {self._type}")
 
-    def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
+    def compute_cost(self, nb_houses: int, road_area: float) -> dict:
+
         #set groundwork_cost and structure_costs to 0
         groundwork_cost = DirectCostGroundWork.zero()
         structure_costs = StructureCosts.zero()
@@ -40,7 +42,7 @@ class DikeModel:
         path_opslag_factor = Path("app/datasets/opslagfactoren.json")
         cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
 
-        calculator = CostCalculator(cat, complexity)
+        calculator = CostCalculator(cat, self.complexity)
 
         if hasattr(self, 'ground_model'):
             volumes = self.ground_model.calculate_all_dike_volumes()
@@ -53,10 +55,10 @@ class DikeModel:
         
 
 
-        total_direct_construction_cost = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost, structure_cost=structure_costs.directe_kosten_constructie) #add something
-        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.total_costs)
-        general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.total_costs)
-        investering_cost = total_direct_construction_cost.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+        total_direct_construction_cost = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk, structure_cost=structure_costs.totale_BDBK_constructie) #add something
+        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
+        general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
+        investering_cost = total_direct_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
         risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
         real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
 
