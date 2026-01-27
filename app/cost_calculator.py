@@ -29,7 +29,7 @@ class DirectCostGroundWork:
     profieleren_nieuwe_graslaag_cost: float
 
     @property
-    def groundwork_cost(self) -> float:
+    def totale_BDBK_grondwerk(self) -> float:
         """Benoemde Directe BouwKosten (BDBK)"""
         return (
             self.preparation_cost +
@@ -48,7 +48,7 @@ class DirectCostGroundWork:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         data = asdict(self)
-        data['groundwork_cost'] = self.groundwork_cost
+        data['totale_BDBK_grondwerk'] = self.totale_BDBK_grondwerk
         return data
 
 
@@ -59,14 +59,14 @@ class DirectCostGroundWork:
 
 @dataclass
 class ConstructionCosts:
-    groundwork_cost: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
-    structure_cost: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
-    direct_costs: float # Directe bouwkosten (DBK)
-    pm_cost: float
-    general_cost: float
-    risk_profit: float
-    indirect_costs: float # Indirecte bouwkosten (IBK)
-    total_costs: float
+    totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
+    totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
+    totale_benoemde_directe_bouwkosten: float # Directe bouwkosten (DBK)
+    pm_kosten: float
+    algemene_kosten: float
+    risico_en_winst: float
+    indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
+    totale_bouwkosten: float #Indirecte en directe bouwkosten (Totaal)
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -114,7 +114,7 @@ class RealEstateCosts:
 
 @dataclass
 class StructureCosts:
-    directe_kosten_constructie: float
+    totale_BDBK_constructie: float
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -262,14 +262,14 @@ class CostCalculator:
         total_costs = directe_bouwkosten + indirecte_bouwkosten
 
         return ConstructionCosts(
-            groundwork_cost=groundwork_cost,
-            structure_cost=structure_cost,
-            direct_costs=directe_bouwkosten,
-            pm_cost=pm_cost,
-            general_cost=general_cost,
-            risk_profit=risk_profit,
-            indirect_costs=indirecte_bouwkosten,
-            total_costs=total_costs,
+            totale_BDBK_grondwerk=groundwork_cost,
+            totale_BDBK_constructie=structure_cost,
+            totale_benoemde_directe_bouwkosten=directe_bouwkosten,
+            pm_kosten=pm_cost,
+            algemene_kosten=general_cost,
+            risico_en_winst=risk_profit,
+            indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten=total_costs,
         )
 
 
@@ -361,4 +361,4 @@ class CostCalculator:
         totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
 
         return StructureCosts(
-            directe_kosten_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
+            totale_BDBK_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
