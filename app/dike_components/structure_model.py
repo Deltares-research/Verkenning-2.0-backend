@@ -34,15 +34,18 @@ class StructureModel:
 
 
         # Determine length of the structure by importing the AHN for the line segment
-        self.length = self.location.geometry.length.sum()
+        self.get_length_from_geometry()
         
-        self.determine_length_from_depth()
-
         self.get_screen_length()
 
         self.cost_catalog = load_kosten_catalogus()
 
         self.set_cost_function_parameters()
+    
+    def get_length_from_geometry(self):
+        """Calculate the length of the structure based on its geometry."""
+        self.length = self.location.geometry.length.sum()
+
         
     def determine_length_from_depth(self, ahn_type = 'AHN4'):
         '''Determine the length of the structure based on depth and AHN data.'''
@@ -52,11 +55,12 @@ class StructureModel:
         self.elevation = AHN4_API().get_elevation_from_line(self.location.geometry[0])
 
     def get_screen_length(self, type = 'mean'):
-        if not hasattr(self, 'elevation'):
-            raise ValueError("Elevation data not available. Please run determine_length_from_depth() first.")
+        """Calculate the length of the structure that is below the specified depth."""
+        #get elevation
+        self.determine_length_from_depth()
         
         # Calculate the length of the structure that is below the specified depth
-
+        
         #get Z values from elevation LineString
         Z = [self.elevation.coords[i][2] for i in range(len(self.elevation.coords))]
         if type == 'mean':
@@ -72,6 +76,9 @@ class StructureModel:
         
         return StructureCosts(directe_kosten_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
 
-        
+    
+    def set_cost_function_parameters(self) -> float:
+        """Compute the total cost of the structure based on its properties."""
+        raise NotImplementedError("This method should be implemented in subclasses.")
     
 
