@@ -12,6 +12,7 @@ import numpy as np
 #test if the dike model reads the structure and ground models correctly
 @pytest.fixture(scope="module")
 def gdf_structure():
+    #default output is Onverankerde damwand
     return gpd.read_file('tests/test_data/test_damwand_input_lines_with_properties.geojson')
 
 @pytest.fixture(scope="module")
@@ -67,3 +68,26 @@ def test_dike_model_cost_computation_with_none():
     assert sum(cost_dict['Directe kosten grondwerk'].values()) == 0.0
     assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
     assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
+
+def test_initialize_dike_model_with_heavescreen(gdf_structure):
+    gdf_structure_heavescreen = gdf_structure.copy()
+    gdf_structure_heavescreen.loc[0,'type'] = 'Heavescherm'
+    dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen)
+
+    #check if structure model is Heavescherm
+    assert dike_model.structure_model.constructietype == 'Heavescherm'
+
+def test_initialize_dike_model_with_invalid_type(gdf_structure):
+    gdf_structure_invalid = gdf_structure.copy()
+    gdf_structure_invalid.loc[0,'type'] = 'Niet geimplementeerde constructie'
+
+    with pytest.raises(ValueError, match="Onbekend constructietype: Niet geimplementeerde constructie"):
+        dike_model = DikeModel(_2d_structure = gdf_structure_invalid)
+
+def test_dike_model_cost_computation_with_heavescreen(gdf_structure):
+    gdf_structure_heavescreen = gdf_structure.copy()
+    gdf_structure_heavescreen.loc[0,'type'] = 'Heavescherm'
+    dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen)
+    cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0, complexity='makkelijke maatregel')
+
+    np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 375517.53)  #example value

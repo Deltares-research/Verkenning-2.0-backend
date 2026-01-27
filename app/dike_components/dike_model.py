@@ -3,6 +3,8 @@ import geopandas as gpd
 from app.cost_calculator import CostCalculator, DirectCostGroundWork, StructureCosts
 from app.dike_components.ground_model import GroundModel
 from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
+from app.dike_components.heavescherm_model import HeaveschermModel
+from app.dike_components.verankerde_damwand_model import VerankerdeDamwandModel
 from app.dike_components.structure_model import StructureModel
 from app.unit_costs_and_surcharges import load_kosten_catalogus
 from pathlib import Path
@@ -21,6 +23,12 @@ class DikeModel:
             self._type = _2d_structure.loc[0,'type']
             if self._type == 'Onverankerde damwand':
                 self.structure_model = OnverankerdeDamwandModel(_2d_structure, complexity=complexity)
+            elif self._type == 'Verankerde damwand':
+                self.structure_model = VerankerdeDamwandModel(_2d_structure, complexity=complexity)
+            elif self._type == 'Heavescherm':
+                self.structure_model = HeaveschermModel(_2d_structure, complexity=complexity)
+            else:
+                raise ValueError(f"Onbekend constructietype: {self._type}")
 
     def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
         #set groundwork_cost and structure_costs to 0
