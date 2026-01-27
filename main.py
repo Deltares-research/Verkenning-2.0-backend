@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 
 from app.dike_components.dike_model import DikeModel
+from app.dike_components.ground_model import GroundModel
 
 load_dotenv()
 
@@ -94,7 +95,7 @@ async def calculate_designs(
     api_key: str = Depends(verify_api_key)
 ):
     """
-    Calculate design volume and return points for 2D ruimtebeslag from GeoJSON input.
+    Calculates design volume and returns points for 2D ruimtebeslag from GeoJSON input.
     
     Expects a GeoJSON FeatureCollection with 3D polygon features.
     Returns volume calculations and a list of points (EPSG:3857) for ruimtebeslag calculation in the frontend.
@@ -124,24 +125,24 @@ async def calculate_designs(
                 detail="Geometry must be 3D (include Z coordinates for elevation)"
             )
         
-        # Initialize DikeModel with the GeoDataFrame
-        dike_model = DikeModel(gdf)
+        # Initialize GroundModel with the GeoDataFrame
+        ground_model = GroundModel(gdf)
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
-        result = dike_model.calculate_volume()
+        result = ground_model.calculate_volume()
         
         print(f"DEBUG: Result type: {type(result)}")
         print(f"DEBUG: Result value: {result}")
         
-        # If result is None, extract from dike_model attributes
+        # If result is None, extract from ground_model attributes
         if result is None:
             print("DEBUG: Result is None, extracting from model attributes")
-            fill_vol = getattr(dike_model, 'total_fill_volume', 0.0)
-            cut_vol = getattr(dike_model, 'total_cut_volume', 0.0)
+            fill_vol = getattr(ground_model, 'total_fill_volume', 0.0)
+            cut_vol = getattr(ground_model, 'total_cut_volume', 0.0)
             total_vol = fill_vol - cut_vol
-            area = getattr(dike_model, 'total_area', 0.0)
-            grid_pts = getattr(dike_model, 'grid_points_count', None)
+            area = getattr(ground_model, 'total_area', 0.0)
+            grid_pts = getattr(ground_model, 'grid_points_count', None)
             print(f"DEBUG: Extracted - fill: {fill_vol}, cut: {cut_vol}, total: {total_vol}")
         # Handle both tuple and dict return types
         elif isinstance(result, tuple):
@@ -168,7 +169,7 @@ async def calculate_designs(
         volume_time = time.time() - volume_start
         
         # Calculate 2D ruimtebeslag
-        ruimtebeslag_result = dike_model.calculate_ruimtebeslag_2d()
+        ruimtebeslag_result = ground_model.calculate_ruimtebeslag_2d()
         
         
         total_calculation_time = time.time() - start_time
@@ -198,7 +199,7 @@ async def calculate_designs(
         print(error_detail)
         raise HTTPException(
             status_code=500, 
-            detail=f"Error calculating designs: {str(e)}"
+            detail=f"Error calculating designs: {str(e.detail) if hasattr(e, 'detail') else str(e)}"
         )
 
 # Debug endpoint to see raw calculation result
@@ -232,10 +233,11 @@ async def debug_calculate_volume(
 
 @app.post("/api/cost_calculation", response_model=DesignCostResult)
 async def calculate_total_cost(
-        geojson: GeoJSONInput,
-        complexity: str,
-        road_surface: float,
-        number_houses: int,
+        geojson_dike: GeoJSONInput = None,
+        geojson_structure: GeoJSONInput = None,
+        complexity: str = 'gemiddelde maatregel',
+        road_surface: float = 0.0,
+        number_houses: int = 0,
         api_key: str = Depends(verify_api_key)
 ):
     """
@@ -244,18 +246,34 @@ async def calculate_total_cost(
 
 
     try:
-        features = []
-        for feature in geojson.features:
-            geom = shape(feature.geometry)
-            features.append({'geometry': geom, **feature.properties})
+        #soil part
+        if not geojson_dike == None:
+            features = []
+            for feature in geojson_dike.features:
+                geom = shape(feature.geometry)
+                features.append({'geometry': geom, **feature.properties})
 
-        gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
-        print(1111111111111)
-        dike_model = DikeModel(gdf)
+            gdf_ground = gpd.GeoDataFrame(features, crs="EPSG:4326")
+        else:
+            gdf_ground = None
+        
+        #structure part
+        if not geojson_structure == None:
+            features = []
+            for feature in geojson_structure.features:
+                geom = shape(feature.geometry)
+                features.append({'geometry': geom, **feature.properties})
+
+            gdf_structure = gpd.GeoDataFrame(features, crs="EPSG:4326")
+        else:
+            gdf_structure = None
+
+        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=complexity)
 
         cost_breakdown = dike_model.compute_cost(road_area=road_surface,
-                                                 complexity=complexity,
                                                  nb_houses=number_houses)
+        
+
         print(cost_breakdown)
 
         return DesignCostResult(

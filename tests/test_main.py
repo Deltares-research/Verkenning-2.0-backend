@@ -1,5 +1,22 @@
-from fastapi.testclient import TestClient
+import os
+import numpy as np
+
+os.environ["API_KEY"] = "test_api_key"
+
 import pytest
+from fastapi.testclient import TestClient
+from pathlib import Path
+import json
+import geopandas as gpd
+
+@pytest.fixture(scope="module")
+def gdf_structure():
+    #default output is Onverankerde damwand
+    return gpd.read_file('tests/test_data/test_damwand_input_lines_with_properties.geojson')
+
+@pytest.fixture(scope="module")
+def gdf_ground():
+    return gpd.read_file('tests/test_data/test_berm__ontwerp_3d.geojson')
 
 # Try to import, but allow tests to run even if volume_calc has issues
 try:
@@ -52,65 +69,50 @@ def test_create_design():
     assert response.json()["message"] == "Design created"
 
 @pytest.mark.skipif(not VOLUME_CALC_AVAILABLE, reason="Volume calculation module has dataclass issues")
-def test_calculate_design_volume():
-    geojson_data = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]
-                    ]
-                },
-                "properties": {
-                    "area": 100.0,
-                    "height": 2.5
-                }
-            }
-        ]
-    }
+def test_calculate_design_volume(gdf_ground):
+    #use gdf_ground fixture to create a simple 3D geojson
+
+    geojson_data = gdf_ground.__geo_interface__
     
-    response = client.post("/api/calculate_design_volume", json=geojson_data)
+    response = client.post("/api/calculate_designs", json=geojson_data, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
     result = response.json()
-    assert "total_volume" in result
-    assert "excavation_volume" in result
-    assert "fill_volume" in result
-    assert result["unit"] == "m³"
+    assert "total_volume" in result['volume']
+    assert "excavation_volume" in result['volume']
+    assert "fill_volume" in result['volume']
+    assert result["volume"]["unit"] == "m³"
 
 @pytest.mark.skipif(not VOLUME_CALC_AVAILABLE, reason="Volume calculation module has dataclass issues")
 def test_calculate_design_volume_empty():
+    #if an empty geojson is provided, should return 500 error
     geojson_data = {
         "type": "FeatureCollection",
         "features": []
     }
     
-    response = client.post("/api/calculate_design_volume", json=geojson_data)
-    assert response.status_code == 400
+    response = client.post("/api/calculate_designs", json=geojson_data, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 500
 
 @pytest.mark.skipif(not VOLUME_CALC_AVAILABLE, reason="Volume calculation module has dataclass issues")
 def test_calculate_design_volume_with_real_data():
     """Test with actual 3D GeoJSON data"""
     # Load test GeoJSON
-    test_file = Path(__file__).parent / "test_data" / "ontwerp_export_3d(1).geojson"
+    test_file = Path(__file__).parent / "test_data" / "test_berm__ontwerp_3d.geojson"
     
-    if test_file.exists():
-        with open(test_file, 'r') as f:
-            geojson_data = json.load(f)
-        
-        response = client.post("/api/calculate_design_volume", json=geojson_data)
-        assert response.status_code == 200
-        result = response.json()
-        assert "total_volume" in result
-        assert "excavation_volume" in result
-        assert "fill_volume" in result
-        assert result["unit"] == "m³"
-        assert result["calculation_time"] is not None
-        print(f"Volume calculation result: {result}")
-    else:
-        print(f"Test file not found: {test_file}")
+    with open(test_file, 'r') as f:
+        geojson_data = json.load(f)
+    
+    response = client.post("/api/calculate_designs", json=geojson_data, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 200
+    result = response.json()
+    assert "total_volume" in result['volume']
+    assert "excavation_volume" in result['volume']
+    assert "fill_volume" in result['volume']
+    assert result["volume"]["unit"] == "m³"
+    assert result["volume"]["calculation_time"] is not None
+    np.testing.assert_allclose(result["volume"]["total_volume"], 3307.33, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["grid_points"], 10713, rtol=1e-2)
+    print(f"Volume calculation result: {result}")
 
 @pytest.mark.skipif(not VOLUME_CALC_AVAILABLE, reason="Volume calculation module has dataclass issues")
 def test_calculate_design_volume_2d_geometry():
@@ -131,6 +133,15 @@ def test_calculate_design_volume_2d_geometry():
         ]
     }
     
-    response = client.post("/api/calculate_design_volume", json=geojson_data)
-    assert response.status_code == 400
+    response = client.post("/api/calculate_designs", json=geojson_data, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 500
     assert "3D" in response.json()["detail"]
+
+def test_cost_calculation_for_ground_design(gdf_ground):
+    geojson_data = gdf_ground.__geo_interface__
+    payload = {
+        "geojson_dike": geojson_data,}
+    response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 200
+    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 106517.25, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 21000.01, rtol=1e-2)
