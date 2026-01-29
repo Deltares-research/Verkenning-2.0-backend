@@ -1,7 +1,6 @@
 from dataclasses import dataclass, asdict
 from enum import Enum
-from typing import Dict
-
+from typing import Dict, Self
 
 
 @dataclass
@@ -30,7 +29,7 @@ class DirectCostGroundWork:
     profieleren_nieuwe_graslaag_cost: float
 
     @property
-    def groundwork_cost(self) -> float:
+    def totale_BDBK_grondwerk(self) -> float:
         """Benoemde Directe BouwKosten (BDBK)"""
         return (
             self.preparation_cost +
@@ -49,24 +48,42 @@ class DirectCostGroundWork:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         data = asdict(self)
-        data['groundwork_cost'] = self.groundwork_cost
+        data['totale_BDBK_grondwerk'] = self.totale_BDBK_grondwerk
         return data
 
+
+    @classmethod
+    def zero(cls) -> "DirectCostGroundWork":
+        return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
 
 
 @dataclass
 class ConstructionCosts:
-    groundwork: float  # Benoemde Directe BouwKosten (BDBK)
-    direct_costs: float # Directe bouwkosten (DBK)
-    pm_cost: float
-    general_cost: float
-    risk_profit: float
-    indirect_costs: float # Indirecte bouwkosten (IBK)
-    total_costs: float
+    totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
+    totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
+    totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
+    pm_kosten: float
+    algemene_kosten: float
+    risico_en_winst: float
+    indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
+    totale_bouwkosten: float #Indirecte en directe bouwkosten (Totaal)
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
+    
+    #function to add two ConstructionCosts together
+    def __add__(self, other: Self) -> Self:
+        return ConstructionCosts(
+            totale_BDBK_grondwerk=self.totale_BDBK_grondwerk + other.totale_BDBK_grondwerk,
+            totale_BDBK_constructie=self.totale_BDBK_constructie + other.totale_BDBK_constructie,
+            totale_directe_bouwkosten=self.totale_directe_bouwkosten + other.totale_directe_bouwkosten,
+            pm_kosten=self.pm_kosten + other.pm_kosten,
+            algemene_kosten=self.algemene_kosten + other.algemene_kosten,
+            risico_en_winst=self.risico_en_winst + other.risico_en_winst,
+            indirecte_bouwkosten=self.indirecte_bouwkosten + other.indirecte_bouwkosten,
+            totale_bouwkosten=self.totale_bouwkosten + other.totale_bouwkosten
+        )
 
 @dataclass
 class EngineeringCosts:
@@ -107,6 +124,18 @@ class RealEstateCosts:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
+
+@dataclass
+class StructureCosts:
+    totale_BDBK_constructie: float
+
+    def to_dict(self) -> dict:
+        """Serialize the dataclass to a dict"""
+        return asdict(self)
+    
+    @classmethod
+    def zero(cls) -> "DirectCostGroundWork":
+        return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
 
 class EnumerationComplexity(Enum):
     EASY = 'makkelijke maatregel'
@@ -225,35 +254,61 @@ class CostCalculator:
             aanvullen_teelaarde_cost=aanvullen_teelaarde_cost,
             profieleren_nieuwe_graslaag_cost=profieleren_nieuwe_graslaag_cost
         )
-
-    def calc_all_construction_costs(self, groundwork_cost: float) -> ConstructionCosts:
-
+    
+    def calc_construction_costs_structure(self, structure_cost: float) -> float:
         if self.complexity == EnumerationComplexity.EASY:
-            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMAKNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCGEMNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.HARD:
-            directe_bouwkosten = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMOENTD'].price_percent / 100)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
-
-
-        pm_cost = directe_bouwkosten * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
-        general_cost = (directe_bouwkosten + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
-        risk_profit = (directe_bouwkosten + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
-
+        
+        pm_cost = directe_bouwkosten_constructie * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
+        general_cost = (directe_bouwkosten_constructie + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
+        risk_profit = (directe_bouwkosten_constructie + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
         indirecte_bouwkosten = pm_cost + general_cost + risk_profit
-        total_costs = directe_bouwkosten + indirecte_bouwkosten
+        total_costs = directe_bouwkosten_constructie + indirecte_bouwkosten
 
         return ConstructionCosts(
-            groundwork=groundwork_cost,
-            direct_costs=directe_bouwkosten,
-            pm_cost=pm_cost,
-            general_cost=general_cost,
-            risk_profit=risk_profit,
-            indirect_costs=indirecte_bouwkosten,
-            total_costs=total_costs,
+            totale_BDBK_grondwerk=0.0,
+            totale_BDBK_constructie=structure_cost,
+            totale_directe_bouwkosten=directe_bouwkosten_constructie,
+            pm_kosten=pm_cost,
+            algemene_kosten=general_cost,
+            risico_en_winst=risk_profit,
+            indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten=total_costs,
         )
+
+    def calc_construction_costs_groundwork(self, groundwork_cost: float) -> float:
+        if self.complexity == EnumerationComplexity.EASY:
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
+        elif self.complexity == EnumerationComplexity.MEDIUM:
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
+        elif self.complexity == EnumerationComplexity.HARD:
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
+        else:
+            raise ValueError(f"Unsupported complexity level: {self.complexity}")
+        
+        pm_cost = directe_bouwkosten_grond * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
+        general_cost = (directe_bouwkosten_grond + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
+        risk_profit = (directe_bouwkosten_grond + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
+
+        indirecte_bouwkosten = pm_cost + general_cost + risk_profit
+        total_costs = directe_bouwkosten_grond + indirecte_bouwkosten
+
+        return ConstructionCosts(
+            totale_BDBK_grondwerk=groundwork_cost,
+            totale_BDBK_constructie=0.0,
+            totale_directe_bouwkosten=directe_bouwkosten_grond,
+            pm_kosten=pm_cost,
+            algemene_kosten=general_cost,
+            risico_en_winst=risk_profit,
+            indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten=total_costs,
+        )        
 
 
     def calc_all_engineering_costs(self, construction_cost: float) -> EngineeringCosts:
@@ -322,16 +377,28 @@ class CostCalculator:
             total_general_costs=total_general_costs,
         )
 
-    def calc_risk_cost(self, investering_cost: float) -> float:
+    def calc_risk_cost(self, investering_cost: float, grond_percentage: float) -> float:
         """
 
         :param investering_cost: Sum of the construction total cost, engineering total cost and general total costs
         """
+        investering_grond = investering_cost * grond_percentage
+        investering_constructie = investering_cost * (1 - grond_percentage)
         if self.complexity == EnumerationComplexity.EASY:
-            return investering_cost * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0
+            return (investering_grond * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            return investering_cost * self.surcharge_dict['Q-GGGEMONV'].price_percent / 100.0
+            return (investering_grond * self.surcharge_dict['Q-GGGEMONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCGEMONV'].price_percent / 100.0)
         elif self.complexity == EnumerationComplexity.HARD:
-            return investering_cost * self.surcharge_dict['Q-GGMOEONV'].price_percent / 100.0
+            return (investering_grond * self.surcharge_dict['Q-GGMOEONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMOEONV'].price_percent / 100.0)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
+
+    # def calc_direct_cost_structure(self, structure_model: StructureModel):
+    def calc_direct_cost_structure(self, vaklengte: float, wandlengte: float, cost_function_parameters: dict) -> StructureCosts:
+        c = cost_function_parameters['c']
+        d = cost_function_parameters['d']
+        z = cost_function_parameters['z']
+        totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
+
+        return StructureCosts(
+            totale_BDBK_constructie = totale_directe_bouwkosten_per_meter * vaklengte)

@@ -10,13 +10,13 @@ from shapely.geometry.polygon import Polygon
 from shapely.ops import unary_union
 import geopandas as gpd
 
-from .AHN_raster_API import AHN4_API
-from .cost_calculator import CostCalculator
-from .unit_costs_and_surcharges import load_kosten_catalogus
-from .utils import reproject_polygon_with_z
+from ..AHN_raster_API import AHN4_API
+from ..cost_calculator import CostCalculator
+from ..unit_costs_and_surcharges import load_kosten_catalogus
+from ..utils import reproject_polygon_with_z
 
 
-class DikeModel:
+class GroundModel:
     def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525):
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.design_export_3d = design_export_3d
@@ -177,81 +177,6 @@ class DikeModel:
             'S0': S0,
             'S5': S5
         }
-
-    def compute_cost(self, nb_houses: int, road_area: float, complexity: str) -> dict:
-        """
-        Calculate all the cost for a dike model: groundwork, construction, engineering, real estate costs.
-
-        input:
-            nb_houses_intersected: number of houses intersected by the dike (for real estate costs)
-            road_area: area of roads to be removed (m²)
-            complexity: 'easy', 'medium', 'complex' (for engineering costs with opslagfactor)
-        output:
-            cost structure dictionary
-        """
-
-        path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
-        path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
-        cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
-
-        ### Calculate filling volumes V3, V4, V5:
-        THICKNESS_TOP_LAYER = 0.2  # meters
-        THICKNESS_CLAY_LAYER = 0.8  # meters
-        volumes = self.calculate_all_dike_volumes(THICKNESS_TOP_LAYER, THICKNESS_CLAY_LAYER)
-
-        ### Compute costs
-        calculator = CostCalculator(cat, complexity)
-
-        groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
-        construction_cost_ground_work = calculator.calc_all_construction_costs(groundwork_cost=groundwork_cost.groundwork_cost)
-        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=construction_cost_ground_work.total_costs)
-        general_cost = calculator.calc_general_costs(construction_cost=construction_cost_ground_work.total_costs)
-        investering_cost = construction_cost_ground_work.total_costs + engineering_cost.total_engineering_costs + general_cost.total_general_costs
-        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost)
-        real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
-
-
-        total_cost_excl_BTW = investering_cost + risk_cost
-        print(total_cost_excl_BTW)
-
-
-        return { 
-            "Directe kosten grondwerk": groundwork_cost.to_dict(),
-            "Bouwkosten - grondwerk": construction_cost_ground_work.to_dict(),
-            # "Bouwkosten - constructie": #TODO
-            "Engineeringkosten": engineering_cost.to_dict(),
-            "Overige bijkomende kosten": general_cost.to_dict(),
-            "Risicoreservering": risk_cost,
-            "Vastgoedkosten": real_estate_costs.to_dict(),
-                }
-
-
-    def calc_engineering_cost(self, total_direct_cost: float, complexity: str, catalogue) -> dict:
-        """
-        Calculate the engineering cost as a fraction of the total direct cost, based on the complexity and the price catalogue.
-
-        :param total_direct_cost: Total direct construction cost
-        :param complexity: Complexity level ('makkelijke maatregel', 'gemiddelde maatregel', 'moeilijke maatregel')
-        :param catalogue: Cost catalogue with opslag factors
-        """
-
-        opslag_factor_dict = {item.code: item for item in catalogue.categorieen[
-            'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen']}
-        if complexity == 'makkelijke maatregel':
-            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG1"].prijs
-            engineering_cost_schets = opslag_factor_dict["Q-ENGON1"].prijs
-        elif complexity == 'gemiddelde maatregel':
-            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG2"].prijs
-            engineering_cost_schets = opslag_factor_dict["Q-ENGON2"].prijs
-
-        elif complexity == 'moeilijke maatregel':
-            engineering_cost_EPK = opslag_factor_dict["Q-ENGOG3"].prijs
-            engineering_cost_schets = opslag_factor_dict["Q-ENGON3"].prijs
-
-        else:
-            raise ValueError(f"Unknown complexity level: {complexity}")
-        return {"engineering_cost_EPK": total_direct_cost * engineering_cost_EPK / 100.0,
-                "engineering_cost_schets": total_direct_cost * engineering_cost_schets / 100.0}
 
     def calculate_volume(self):
         """

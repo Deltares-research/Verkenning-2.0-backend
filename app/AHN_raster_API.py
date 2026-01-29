@@ -1,3 +1,20 @@
+from owslib.wcs import WebCoverageService
+from shapely.geometry import LineString
+from io import BytesIO
+import numpy as np
+import time
+import warnings
+
+try:
+    import rasterio
+    from rasterio.io import MemoryFile
+    from rasterio.transform import Affine
+    RASTERIO_AVAILABLE = True
+except Exception:
+    RASTERIO_AVAILABLE = False
+    from PIL import Image
+
+from scipy.ndimage import map_coordinates
 
 """
 Optimized AHN4 client for extracting elevation profiles along LineStrings.
@@ -26,12 +43,14 @@ import numpy as np
 import time
 import warnings
 
-from PIL import Image
-
-from rasterio.io import MemoryFile
-from rasterio.transform import Affine
-RASTERIO_AVAILABLE = True
-
+try:
+    import rasterio
+    from rasterio.io import MemoryFile
+    from rasterio.transform import Affine
+    RASTERIO_AVAILABLE = True
+except Exception:
+    RASTERIO_AVAILABLE = False
+    from PIL import Image
 
 from scipy.ndimage import map_coordinates
 
@@ -194,10 +213,20 @@ class AHN4_API:
         # perform fast bilinear interpolation (order=1)
         Z = map_coordinates(data, coords, order=1, mode='nearest')
 
-        # Convert distances
-        L = distances - correction
 
-        return L, Z
+        #make linestring with Z values
+        linestring_3d = LineString([(x, y, z_val) for (x, y), z_val in zip(zip(xs, ys), Z)])
+
+
+        # #plot for testing purposes
+        # bbox_2 = (bbox[0], bbox[2], bbox[1], bbox[3])
+        # import matplotlib.pyplot as plt
+        # plt.figure()
+        # plt.imshow(data, extent=bbox_2, origin='upper', cmap='terrain')
+        # #plot linestring on top of the raster with elevation in color
+        # #get right coordinates
+        # plt.scatter(xs,ys, c=np.array(Z), cmap='Oranges')
+        return linestring_3d
 
     # ---------------------------- Convenience API -----------------------------
     def set_resolution(self, res):

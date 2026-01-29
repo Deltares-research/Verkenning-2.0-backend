@@ -6,7 +6,7 @@ import time
 
 import shapely
 
-from app.dike_model import DikeModel
+from app.dike_components.dike_model import DikeModel
 
 sys.path.insert(0, '..')
 
