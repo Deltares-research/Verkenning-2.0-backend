@@ -59,7 +59,7 @@ class DikeModel:
         engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
         general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
         investering_cost = total_direct_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
-        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost, grond_percentage = total_direct_construction_cost_ground.totale_bouwkosten / total_direct_construction_cost.totale_bouwkosten)
+        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost, grond_percentage = total_direct_construction_cost_ground.totale_bouwkosten / total_direct_construction_cost.totale_bouwkosten if total_direct_construction_cost.totale_bouwkosten > 0 else 0) 
         real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
 
 

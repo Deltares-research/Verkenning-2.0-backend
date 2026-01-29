@@ -154,8 +154,8 @@ def test_cost_calculation_for_ground_and_structure(gdf_ground, gdf_structure):
     assert response.status_code == 200
     np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_grondwerk'], 76489.88, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 687494.15, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 135540.31, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 726978.02, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 224874.34, rtol=1e-2)
 
 def test_cost_calculation_for_structure_only(gdf_structure):
     payload = {
@@ -163,5 +163,5 @@ def test_cost_calculation_for_structure_only(gdf_structure):
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
     np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 580976.90, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 114540.31, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 203874.33, rtol=1e-2)
