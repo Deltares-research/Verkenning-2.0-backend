@@ -61,7 +61,7 @@ class DirectCostGroundWork:
 class ConstructionCosts:
     totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
     totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
-    totale_benoemde_directe_bouwkosten: float # Directe bouwkosten (DBK)
+    totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
     pm_kosten: float
     algemene_kosten: float
     risico_en_winst: float
@@ -243,16 +243,20 @@ class CostCalculator:
         )
 
     def calc_all_construction_costs(self, groundwork_cost: float, structure_cost: float) -> ConstructionCosts:
-        totaal_benoemde_directe_bouwkosten = groundwork_cost + structure_cost
+
         if self.complexity == EnumerationComplexity.EASY:
-            directe_bouwkosten = totaal_benoemde_directe_bouwkosten * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMAKNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_bouwkosten = totaal_benoemde_directe_bouwkosten * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCGEMNTD'].price_percent / 100)
         elif self.complexity == EnumerationComplexity.HARD:
-            directe_bouwkosten = totaal_benoemde_directe_bouwkosten * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
+            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
+            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMOENTD'].price_percent / 100)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
-
+        
+        directe_bouwkosten = directe_bouwkosten_grond + directe_bouwkosten_constructie
 
         pm_cost = directe_bouwkosten * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
         general_cost = (directe_bouwkosten + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
@@ -264,7 +268,7 @@ class CostCalculator:
         return ConstructionCosts(
             totale_BDBK_grondwerk=groundwork_cost,
             totale_BDBK_constructie=structure_cost,
-            totale_benoemde_directe_bouwkosten=directe_bouwkosten,
+            totale_directe_bouwkosten=directe_bouwkosten,
             pm_kosten=pm_cost,
             algemene_kosten=general_cost,
             risico_en_winst=risk_profit,
