@@ -30,7 +30,7 @@ class StructureModel:
         if self.constructietype not in self.valid_constructietypes:
             raise ValueError(f"Invalid constructietype: {self.constructietype}. Must be one of {self.valid_constructietypes}.")
         
-        self.diepte = self.location['diepte'].iloc[0]
+        self.depth = self.location['depth'].iloc[0]
 
 
         # Determine length of the structure by importing the AHN for the line segment
@@ -65,7 +65,7 @@ class StructureModel:
         Z = [self.elevation.coords[i][2] for i in range(len(self.elevation.coords))]
         if type == 'mean':
             top_level = np.mean(Z) 
-            self.wandlengte = max(0, top_level - self.diepte)
+            self.wandlengte = max(0, top_level - self.depth)
         else:
             raise ValueError("Niet geimplementeerd voor andere types dan 'mean'.")
 

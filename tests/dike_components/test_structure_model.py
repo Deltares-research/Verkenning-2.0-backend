@@ -17,7 +17,7 @@ def gdf_structure():
 def test_structure_model_properties(expected_diepte, expected_type,expected_wandlengte,gdf_structure):
     onverankerde_damwand = OnverankerdeDamwandModel(location=gdf_structure)
 
-    assert onverankerde_damwand.diepte == expected_diepte
+    assert onverankerde_damwand.depth == expected_diepte
     assert onverankerde_damwand.constructietype == expected_type
     assert onverankerde_damwand.wandlengte == expected_wandlengte
 
@@ -28,7 +28,7 @@ def test_get_screen_length(gdf_structure):
     for depth, expected_length in zip(depths, expected_lengths):
         #copy object to avoid modifying original
         new_object = OnverankerdeDamwandModel(location=gdf_structure)
-        new_object.diepte = depth
+        new_object.depth = depth
         new_object.get_screen_length()   
         np.testing.assert_allclose(new_object.wandlengte, expected_length, rtol=1e-2)
 
