@@ -88,6 +88,13 @@ class DesignCalculationResult(BaseModel):
 class DesignCostResult(BaseModel):
     breakdown: dict  # Please dont change type, Pydantic is being very annoying
 
+class CostCalculationRequest(BaseModel):
+    geojson_dike: GeoJSONInput | None = None
+    geojson_structure: GeoJSONInput | None = None
+    complexity: str = "gemiddelde maatregel"
+    road_surface: float = 0.0
+    number_houses: int = 0
+
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
 async def calculate_designs(
@@ -233,23 +240,21 @@ async def debug_calculate_volume(
 
 @app.post("/api/cost_calculation", response_model=DesignCostResult)
 async def calculate_total_cost(
-        geojson_dike: GeoJSONInput = None,
-        geojson_structure: GeoJSONInput = None,
-        complexity: str = 'gemiddelde maatregel',
-        road_surface: float = 0.0,
-        number_houses: int = 0,
+        payload: CostCalculationRequest,
         api_key: str = Depends(verify_api_key)
 ):
     """
 
     """
+    print(payload)
+
 
 
     try:
         #soil part
-        if not geojson_dike == None:
+        if not payload.geojson_dike == None:
             features = []
-            for feature in geojson_dike.features:
+            for feature in payload.geojson_dike.features:
                 geom = shape(feature.geometry)
                 features.append({'geometry': geom, **feature.properties})
 
@@ -258,9 +263,9 @@ async def calculate_total_cost(
             gdf_ground = None
         
         #structure part
-        if not geojson_structure == None:
+        if not payload.geojson_structure == None:
             features = []
-            for feature in geojson_structure.features:
+            for feature in payload.geojson_structure.features:
                 geom = shape(feature.geometry)
                 features.append({'geometry': geom, **feature.properties})
 
@@ -268,10 +273,10 @@ async def calculate_total_cost(
         else:
             gdf_structure = None
 
-        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=complexity)
+        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=payload.complexity)
 
-        cost_breakdown = dike_model.compute_cost(road_area=road_surface,
-                                                 nb_houses=number_houses)
+        cost_breakdown = dike_model.compute_cost(road_area=payload.road_surface,
+                                                 nb_houses=payload.number_houses)
         
 
         print(cost_breakdown)
