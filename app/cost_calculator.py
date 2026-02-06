@@ -83,7 +83,7 @@ class DirectCostGroundWork:
 
     @classmethod
     def zero(cls) -> "DirectCostGroundWork":
-        zero_cost = CostItem(unit_cost=0.0, quantity=0.0)
+        zero_cost = CostItem(unit_cost=0.0, quantity=0.0, unit='')
         return cls(**{field: zero_cost for field in cls.__dataclass_fields__})
 
 
