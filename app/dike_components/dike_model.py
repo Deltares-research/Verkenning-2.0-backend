@@ -37,9 +37,9 @@ class DikeModel:
         groundwork_cost = DirectCostGroundWork.zero()
         structure_costs = StructureCosts.zero()
         # of there is a ground model, compute groundwork cost
-        #initialize CostCalculator here
-        path_cost = Path("app/datasets/eenheidsprijzen.json")
-        path_opslag_factor = Path("app/datasets/opslagfactoren.json")
+        # initialize CostCalculator here
+        path_cost = Path(__file__).parent.parent.joinpath("datasets/eenheidsprijzen.json")
+        path_opslag_factor = Path(__file__).parent.parent.joinpath("datasets/opslagfactoren.json")
         cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
 
         calculator = CostCalculator(cat, self.complexity)
