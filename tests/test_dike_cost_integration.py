@@ -39,12 +39,15 @@ def test_compute_cost_monotonic_road_area(dike_model):
 def test_groundwork_cost_nonzero(dike_model):
     costs = dike_model.compute_cost(nb_houses=0, road_area=0)
     EXPECTED_COST_DECOMPOSITION = {
-        'Directe kosten grondwerk': {'preparation_cost': 914.04, 'totale_BDBK_grondwerk': 76489.88},
+        'Directe kosten grondwerk': {'preparation_cost': {'value': 914.04}, 'totale_BDBK_grondwerk': 76489.88},
         'Directe kosten constructies': {'totale_BDBK_constructie': 0.0},
         'Engineeringkosten': {'epk_cost': 8355.92,},
         'Vastgoedkosten': {'house_cost': 0, 'road_cost': 0.0}}
     np.testing.assert_allclose(costs["Directe kosten grondwerk"]["totale_BDBK_grondwerk"], EXPECTED_COST_DECOMPOSITION['Directe kosten grondwerk']['totale_BDBK_grondwerk'], rtol=1e-2)
-    #check if the full cost dict matches with floats within tolerance
-    for key in EXPECTED_COST_DECOMPOSITION:
-        for subkey in EXPECTED_COST_DECOMPOSITION[key]:
-            np.testing.assert_allclose(costs[key][subkey], EXPECTED_COST_DECOMPOSITION[key][subkey], rtol=1e-2)
+    # Check preparation_cost structure (now a CostItem with value and unit_cost)
+    np.testing.assert_allclose(costs["Directe kosten grondwerk"]["preparation_cost"]["value"], EXPECTED_COST_DECOMPOSITION['Directe kosten grondwerk']['preparation_cost']['value'], rtol=1e-2)
+    # Check other cost items
+    np.testing.assert_allclose(costs["Directe kosten constructies"]["totale_BDBK_constructie"], EXPECTED_COST_DECOMPOSITION['Directe kosten constructies']['totale_BDBK_constructie'], rtol=1e-2)
+    np.testing.assert_allclose(costs["Engineeringkosten"]["epk_cost"], EXPECTED_COST_DECOMPOSITION['Engineeringkosten']['epk_cost'], rtol=1e-2)
+    np.testing.assert_allclose(costs["Vastgoedkosten"]["house_cost"], EXPECTED_COST_DECOMPOSITION['Vastgoedkosten']['house_cost'], rtol=1e-2)
+    np.testing.assert_allclose(costs["Vastgoedkosten"]["road_cost"], EXPECTED_COST_DECOMPOSITION['Vastgoedkosten']['road_cost'], rtol=1e-2)
