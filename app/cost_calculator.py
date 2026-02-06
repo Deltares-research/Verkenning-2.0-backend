@@ -18,6 +18,7 @@ class UnitPriceItem:
 class CostItem:
     unit_cost: float
     quantity: float
+    unit: str
 
     @property
     def value(self) -> float:
@@ -27,7 +28,7 @@ class CostItem:
             return 0
 
     def to_dict(self) -> dict:
-        return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity}
+        return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit}
 
 
 @dataclass
@@ -100,7 +101,7 @@ class ConstructionCosts:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
-    
+
     #function to add two ConstructionCosts together
     def __add__(self, other: Self) -> Self:
         return ConstructionCosts(
@@ -143,7 +144,7 @@ class GeneralCosts:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
-    
+
 @dataclass
 class RealEstateCosts:
     road_cost: float
@@ -161,7 +162,7 @@ class StructureCosts:
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
-    
+
     @classmethod
     def zero(cls) -> "DirectCostGroundWork":
         return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
@@ -260,18 +261,18 @@ class CostCalculator:
         ### Combine to get costs
         unit_cost_preparation = Q_AW010 + Q_AW020
         unit_cost_profieleren_nieuwe_graslaag = Q_GV120 - Q_AW030
-        
-        preparation_cost = CostItem(quantity=S0, unit_cost=unit_cost_preparation)  # Voorbereiden terrein
-        afgraven_grasbekleding_cost = CostItem(quantity=V1b, unit_cost=Q_GV010)  # afgraven oude grasbekleding naar depot
-        afgraven_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV030)  # afgraven oude kleilaag naar depot
-        herkeuren_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV050)  # hergebruiken oude kleilaag in nieuwe kern
-        aanvullen_kern_cost = CostItem(quantity=(V5 + V1b), unit_cost=Q_GV090)  # aanvullen nieuwe kern met nieuw materiaal
-        profieleren_dijkkern_cost = CostItem(quantity=S5, unit_cost=Q_GV100)  # profieleren van dijkkern
-        aanbregen_nieuwe_kleilaag_cost = CostItem(quantity=V4, unit_cost=Q_GV080)  # aanbregen nieuwe kleilaag
-        profieleren_vannieuwe_kleilaag_cost = CostItem(quantity=S5, unit_cost=Q_GV110)  # profileren nieuwe kleilaar
-        hergebruik_teelaarde_cost = CostItem(quantity=V1b, unit_cost=Q_GV060)  # hergebruiken teelaarde in nieuwe bekleding
-        aanvullen_teelaarde_cost = CostItem(quantity=(V3 - V1b), unit_cost=Q_GV070)  # aanvullen teelaarde in nieuwe bekleding
-        profieleren_nieuwe_graslaag_cost = CostItem(quantity=S5, unit_cost=unit_cost_profieleren_nieuwe_graslaag)  # profileren nieuwe graslaag en inzaaien
+
+        preparation_cost = CostItem(quantity=S0, unit_cost=unit_cost_preparation, unit='m2')  # Voorbereiden terrein
+        afgraven_grasbekleding_cost = CostItem(quantity=V1b, unit_cost=Q_GV010, unit='m3')  # afgraven oude grasbekleding naar depot
+        afgraven_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV030, unit='m3')  # afgraven oude kleilaag naar depot
+        herkeuren_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV050, unit='m3')  # hergebruiken oude kleilaag in nieuwe kern
+        aanvullen_kern_cost = CostItem(quantity=(V5 + V1b), unit_cost=Q_GV090, unit='m3')  # aanvullen nieuwe kern met nieuw materiaal
+        profieleren_dijkkern_cost = CostItem(quantity=S5, unit_cost=Q_GV100, unit='m2')  # profieleren van dijkkern
+        aanbregen_nieuwe_kleilaag_cost = CostItem(quantity=V4, unit_cost=Q_GV080, unit='m3')  # aanbregen nieuwe kleilaag
+        profieleren_vannieuwe_kleilaag_cost = CostItem(quantity=S5, unit_cost=Q_GV110, unit='m3')  # profileren nieuwe kleilaar
+        hergebruik_teelaarde_cost = CostItem(quantity=V1b, unit_cost=Q_GV060, unit='m3')  # hergebruiken teelaarde in nieuwe bekleding
+        aanvullen_teelaarde_cost = CostItem(quantity=(V3 - V1b), unit_cost=Q_GV070, unit='m3')  # aanvullen teelaarde in nieuwe bekleding
+        profieleren_nieuwe_graslaag_cost = CostItem(quantity=S5, unit_cost=unit_cost_profieleren_nieuwe_graslaag, unit='m2')  # profileren nieuwe graslaag en inzaaien
 
         return DirectCostGroundWork(
             preparation_cost=preparation_cost,
@@ -286,7 +287,7 @@ class CostCalculator:
             aanvullen_teelaarde_cost=aanvullen_teelaarde_cost,
             profieleren_nieuwe_graslaag_cost=profieleren_nieuwe_graslaag_cost
         )
-    
+
     def calc_construction_costs_structure(self, structure_cost: float) -> ConstructionCosts:
         if self.complexity == EnumerationComplexity.EASY:
             directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMAKNTD'].price_percent / 100)
@@ -296,7 +297,7 @@ class CostCalculator:
             directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMOENTD'].price_percent / 100)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
-        
+
         pm_cost = directe_bouwkosten_constructie * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
         general_cost = (directe_bouwkosten_constructie + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
         risk_profit = (directe_bouwkosten_constructie + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
@@ -323,7 +324,7 @@ class CostCalculator:
             directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
-        
+
         pm_cost = directe_bouwkosten_grond * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
         general_cost = (directe_bouwkosten_grond + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
         risk_profit = (directe_bouwkosten_grond + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
@@ -340,7 +341,7 @@ class CostCalculator:
             risico_en_winst=risk_profit,
             indirecte_bouwkosten=indirecte_bouwkosten,
             totale_bouwkosten=total_costs,
-        )        
+        )
 
 
     def calc_all_engineering_costs(self, construction_cost: float) -> EngineeringCosts:
