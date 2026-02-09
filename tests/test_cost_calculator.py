@@ -130,11 +130,11 @@ def test_general_cost_hard(calculator_hard):
     assert costs_ground.total_general_costs/constr_cost_ground == costs_structure.total_general_costs/constr_cost_structure
 
 def test_total_cost_ground_easy(calculator_easy):
-    constr_cost_ground = calculator_easy.calc_construction_costs_groundwork(1000).totale_bouwkosten
-    eng_cost = calculator_easy.calc_all_engineering_costs(constr_cost_ground).total_engineering_costs
-    gen_cost = calculator_easy.calc_general_costs(constr_cost_ground).total_general_costs
-    total_investment = constr_cost_ground + eng_cost + gen_cost
-    risk_cost = calculator_easy.calc_risk_cost(total_investment, grond_percentage=1.0)
+    constr_cost_ground = calculator_easy.calc_construction_costs_groundwork(1000)
+    eng_cost = calculator_easy.calc_all_engineering_costs(constr_cost_ground.totale_bouwkosten).total_engineering_costs
+    gen_cost = calculator_easy.calc_general_costs(constr_cost_ground.totale_bouwkosten).total_general_costs
+    total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
+    risk_cost = calculator_easy.calc_risk_cost(total_investment, constr_cost_ground)
 
     total_cost_excl_BTW = total_investment + risk_cost
 
@@ -143,11 +143,11 @@ def test_total_cost_ground_easy(calculator_easy):
     assert total_cost_excl_BTW == pytest.approx(1889.6273692832228)
 
 def test_total_cost_ground_medium(calculator_medium):
-    constr_cost_ground = calculator_medium.calc_construction_costs_groundwork(1000).totale_bouwkosten
-    eng_cost = calculator_medium.calc_all_engineering_costs(constr_cost_ground).total_engineering_costs
-    gen_cost = calculator_medium.calc_general_costs(constr_cost_ground).total_general_costs
-    total_investment = constr_cost_ground + eng_cost + gen_cost
-    risk_cost = calculator_medium.calc_risk_cost(total_investment, grond_percentage=1.0)
+    constr_cost_ground = calculator_medium.calc_construction_costs_groundwork(1000)
+    eng_cost = calculator_medium.calc_all_engineering_costs(constr_cost_ground.totale_bouwkosten).total_engineering_costs
+    gen_cost = calculator_medium.calc_general_costs(constr_cost_ground.totale_bouwkosten).total_general_costs
+    total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
+    risk_cost = calculator_medium.calc_risk_cost(total_investment, constr_cost_ground)
 
     total_cost_excl_BTW = total_investment + risk_cost
 
@@ -157,11 +157,11 @@ def test_total_cost_ground_medium(calculator_medium):
 
 
 def test_total_cost_ground_hard(calculator_hard):
-    constr_cost_ground = calculator_hard.calc_construction_costs_groundwork(1000).totale_bouwkosten
-    eng_cost = calculator_hard.calc_all_engineering_costs(constr_cost_ground).total_engineering_costs
-    gen_cost = calculator_hard.calc_general_costs(constr_cost_ground).total_general_costs
-    total_investment = constr_cost_ground + eng_cost + gen_cost
-    risk_cost = calculator_hard.calc_risk_cost(total_investment, grond_percentage=1.0)
+    constr_cost_ground = calculator_hard.calc_construction_costs_groundwork(1000)
+    eng_cost = calculator_hard.calc_all_engineering_costs(constr_cost_ground.totale_bouwkosten).total_engineering_costs
+    gen_cost = calculator_hard.calc_general_costs(constr_cost_ground.totale_bouwkosten).total_general_costs
+    total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
+    risk_cost = calculator_hard.calc_risk_cost(total_investment, constr_cost_ground)
     total_cost_excl_BTW = total_investment + risk_cost
 
     assert total_investment == pytest.approx(1945.8195658613915)
@@ -169,14 +169,14 @@ def test_total_cost_ground_hard(calculator_hard):
     assert total_cost_excl_BTW == pytest.approx(2334.98347903367)
 
 def test_total_cost_medium_both(calculator_medium):
-    constr_cost_ground = calculator_medium.calc_construction_costs_groundwork(500).totale_bouwkosten
-    constr_cost_structure = calculator_medium.calc_construction_costs_structure(500).totale_bouwkosten
-    eng_cost = calculator_medium.calc_all_engineering_costs(constr_cost_ground+constr_cost_structure).total_engineering_costs
-    gen_cost = calculator_medium.calc_general_costs(constr_cost_ground+constr_cost_structure).total_general_costs
-    total_investment = constr_cost_ground + constr_cost_structure + eng_cost + gen_cost
-    grond_percentage = constr_cost_ground / (constr_cost_ground + constr_cost_structure)
+    constr_cost_ground = calculator_medium.calc_construction_costs_groundwork(500)
+    constr_cost_structure = calculator_medium.calc_construction_costs_structure(500)
+    eng_cost = calculator_medium.calc_all_engineering_costs(constr_cost_ground.totale_bouwkosten+constr_cost_structure.totale_bouwkosten).total_engineering_costs
+    gen_cost = calculator_medium.calc_general_costs(constr_cost_ground.totale_bouwkosten+constr_cost_structure.totale_bouwkosten).total_general_costs
+    total_investment = constr_cost_ground.totale_bouwkosten + constr_cost_structure.totale_bouwkosten + eng_cost + gen_cost
+    grond_percentage = constr_cost_ground.totale_bouwkosten / (constr_cost_ground.totale_bouwkosten + constr_cost_structure.totale_bouwkosten)
     assert grond_percentage == pytest.approx(0.4835680751173709)
-    risk_cost = calculator_medium.calc_risk_cost(total_investment, grond_percentage=grond_percentage)
+    risk_cost = calculator_medium.calc_risk_cost(total_investment, construction_costs=constr_cost_ground.__add__(constr_cost_structure))
 
     total_cost_excl_BTW = total_investment + risk_cost
 
