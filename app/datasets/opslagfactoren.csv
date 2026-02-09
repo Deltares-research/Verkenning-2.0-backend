@@ -20,10 +20,20 @@ Q-GGGEMNTD,GG - gemiddeld: Nader te detailleren directe bouwkosten,3.00%
 Q-GGGEMONV,GG - gemiddeld: Objectoverstijgende risicoreservering,15.00%
 Q-GGMOENTD,GG - moeilijk: Nader te detailleren directe bouwkosten,5.00%
 Q-GGMOEONV,GG - moeilijk: Objectoverstijgende risicoreservering,20.00%
-,Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen,
+,Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructief & Infra,
 Q-GCMAKNTD,GC - makkelijk: Nader te detailleren directe bouwkosten,5.00%
 Q-GCMAKONV,GC - makkelijk: Objectoverstijgende risicoreservering,20.00%
 Q-GCGEMNTD,GC - gemiddeld: Nader te detailleren directe bouwkosten,10.00%
 Q-GCGEMONV,GC - gemiddeld: Objectoverstijgende risicoreservering,25.00%
 Q-GCMOENTD,GC - moeilijk: Nader te detailleren directe bouwkosten,15.00%
 Q-GCMOEONV,GC - moeilijk: Objectoverstijgende risicoreservering,30.00%
+,Percentages ter bepaling Opslagfactor investeringskosten / directe vastgoedkosten,
+Q-GVMAKNTD,GV - makkelijk: Nader te detailleren directe bouwkosten,5%
+Q-GVMAKIND,GV - makkelijk: Indirecte vastgoedkosten,7%
+Q-GVMAKNBO,GV - makkelijk: Niet benoemd objectrisico vastgoed,15%
+Q-GVGEMNTD,GV - gemiddeld: Nader te detailleren directe bouwkosten,7%
+Q-GVGEMIND,GV - gemiddeld: Indirecte vastgoedkosten,10%
+Q-GVGEMNBO,GV - gemiddeld: Niet benoemd objectrisico vastgoed,20%
+Q-GVMOENTD,GV - moeilijk: Nader te detailleren directe bouwkosten,10%
+Q-GVMOEIND,GV - moeilijk: Indirecte vastgoedkosten,15%
+Q-GVMOENBO,GV - moeilijk: Niet benoemd objectrisico vastgoed,30%

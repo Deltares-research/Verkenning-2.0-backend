@@ -165,3 +165,15 @@ def test_cost_calculation_for_structure_only(gdf_structure):
     np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 203874.33, rtol=1e-2)
+
+def test_cost_calculation_for_combination_of_all(gdf_ground, gdf_structure):
+    payload = {
+        "geojson_dike": gdf_ground.__geo_interface__,
+        "geojson_structure": gdf_structure.__geo_interface__,
+        "number_houses": 10,
+        "road_surface": 1000.0}
+    response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 200
+    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 203874.33, rtol=1e-2)

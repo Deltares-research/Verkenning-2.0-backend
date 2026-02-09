@@ -163,8 +163,14 @@ class GeneralCosts:
 
 @dataclass
 class RealEstateCosts:
-    house_cost: CostItem
-    total_real_estate_costs: CostItem
+    direct_benoemd_real_estate_cost: CostItem
+    direct_niet_benoemd_real_estate_cost: float
+    indirect_real_estate_cost: float
+    real_estate_risk_cost: float
+
+    @property
+    def total_real_estate_costs(self) -> float:
+        return self.direct_benoemd_real_estate_cost.value + self.direct_niet_benoemd_real_estate_cost + self.indirect_real_estate_cost + self.real_estate_risk_cost
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -232,14 +238,16 @@ class CostCalculator:
         categories_surcharges = [
             'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten algemeen',
             'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen',
-            'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen',
+            'Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructief & Infra',
+            'Percentages ter bepaling Opslagfactor investeringskosten / directe vastgoedkosten',
         ]
 
         categories_unit_prices = [
             'Grondverzet',
             'Profielafwerking',
             'Algemene werkzaamheden',
-            'Wegen fietspaden en op-/afritten'
+            'Wegen fietspaden en op-/afritten',
+            'Vastgoed'
         ]
 
         all_items_surcharges = []
@@ -260,14 +268,32 @@ class CostCalculator:
             for item in all_items_unit_prices
         }
 
-    def calc_real_estate_costs(self, nb_houses: float, road_area: float) -> RealEstateCosts:
+    def calc_real_estate_costs(self, nb_houses: float) -> RealEstateCosts:
         """
         Calculate real estate costs based on base cost and surcharge percentage.
         """
-        COST_HOUSES = 700000
+        direct_benoemd_real_estate_cost = CostItem(unit_cost=self.unit_price_dict['Q-VASTGOED'].price, quantity=nb_houses, unit='panden')
+        if self.complexity == EnumerationComplexity.EASY:
+            direct_niet_benoemd_real_estate_cost = direct_benoemd_real_estate_cost.value * self.surcharge_dict['Q-GVMAKNTD'].price_percent / 100.0
+            _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost
+            indirect_real_estate_cost = _direct_real_estate_cost * self.surcharge_dict['Q-GVMAKIND'].price_percent / 100.0
+            real_estate_risk_cost = (_direct_real_estate_cost+indirect_real_estate_cost) * self.surcharge_dict['Q-GVMAKNBO'].price_percent / 100.0
+        elif self.complexity == EnumerationComplexity.MEDIUM:
+            direct_niet_benoemd_real_estate_cost = direct_benoemd_real_estate_cost.value * self.surcharge_dict['Q-GVGEMNTD'].price_percent / 100.0
+            _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost
+            indirect_real_estate_cost = _direct_real_estate_cost * self.surcharge_dict['Q-GVGEMIND'].price_percent / 100.0
+            real_estate_risk_cost = (_direct_real_estate_cost+indirect_real_estate_cost) * self.surcharge_dict['Q-GVGEMNBO'].price_percent / 100.0
+        elif self.complexity == EnumerationComplexity.HARD:
+            direct_niet_benoemd_real_estate_cost = direct_benoemd_real_estate_cost.value * self.surcharge_dict['Q-GVMOENTD'].price_percent / 100.0
+            _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost
+            indirect_real_estate_cost = _direct_real_estate_cost * self.surcharge_dict['Q-GVMOEIND'].price_percent / 100.0
+            real_estate_risk_cost = (_direct_real_estate_cost+indirect_real_estate_cost) * self.surcharge_dict['Q-GVMOENBO'].price_percent / 100.0
+
         return RealEstateCosts(
-            house_cost=nb_houses * COST_HOUSES,
-            total_real_estate_costs= nb_houses * COST_HOUSES
+            direct_benoemd_real_estate_cost=direct_benoemd_real_estate_cost,
+            direct_niet_benoemd_real_estate_cost=direct_niet_benoemd_real_estate_cost,
+            indirect_real_estate_cost=indirect_real_estate_cost,
+            real_estate_risk_cost=real_estate_risk_cost,
         )
 
     def calc_direct_cost_ground_work(self, volumes: dict) -> DirectCostGroundWork:
