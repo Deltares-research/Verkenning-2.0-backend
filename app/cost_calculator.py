@@ -91,27 +91,39 @@ class DirectCostGroundWork:
 class ConstructionCosts:
     totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
     totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
+    totale_BDBK_infrastructuur: float # Benoemde Directe BouwKosten (BDBK) (deel infrastructuur)
     totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
     pm_kosten: float
     algemene_kosten: float
     risico_en_winst: float
     indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
-    totale_bouwkosten: float #Indirecte en directe bouwkosten (Totaal)
+    totale_bouwkosten_grondwerk: float #Indirecte en directe bouwkosten (Totaal)
+    totale_bouwkosten_constructie: float #Indirecte en directe bouwkosten (Totaal)
+    totale_bouwkosten_infrastructuur: float #Indirecte en directe bouwkosten (Totaal)
+    totale_bouwkosten: float # Totaal bouwkosten (TBK) (DBK + IBK)
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
 
+    @classmethod
+    def zero(cls) -> "ConstructionCosts":
+        return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
+    
     #function to add two ConstructionCosts together
     def __add__(self, other: Self) -> Self:
         return ConstructionCosts(
             totale_BDBK_grondwerk=self.totale_BDBK_grondwerk + other.totale_BDBK_grondwerk,
             totale_BDBK_constructie=self.totale_BDBK_constructie + other.totale_BDBK_constructie,
+            totale_BDBK_infrastructuur=self.totale_BDBK_infrastructuur + other.totale_BDBK_infrastructuur,
             totale_directe_bouwkosten=self.totale_directe_bouwkosten + other.totale_directe_bouwkosten,
             pm_kosten=self.pm_kosten + other.pm_kosten,
             algemene_kosten=self.algemene_kosten + other.algemene_kosten,
             risico_en_winst=self.risico_en_winst + other.risico_en_winst,
             indirecte_bouwkosten=self.indirecte_bouwkosten + other.indirecte_bouwkosten,
+            totale_bouwkosten_grondwerk=self.totale_bouwkosten_grondwerk + other.totale_bouwkosten_grondwerk,
+            totale_bouwkosten_constructie=self.totale_bouwkosten_constructie + other.totale_bouwkosten_constructie,
+            totale_bouwkosten_infrastructuur=self.totale_bouwkosten_infrastructuur + other.totale_bouwkosten_infrastructuur,
             totale_bouwkosten=self.totale_bouwkosten + other.totale_bouwkosten
         )
 
@@ -130,6 +142,10 @@ class EngineeringCosts:
         """Serialize the dataclass to a dict"""
         return asdict(self)
 
+    @classmethod
+    def zero(cls) -> "EngineeringCosts":
+        return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
+    
 @dataclass
 class GeneralCosts:
     insurances: float # Vergunningen, heffingen en verzekeringen
@@ -147,13 +163,13 @@ class GeneralCosts:
 
 @dataclass
 class RealEstateCosts:
-    road_cost: float
-    house_cost: float
-    total_real_estate_costs: float
+    house_cost: CostItem
+    total_real_estate_costs: CostItem
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         return asdict(self)
+
 
 @dataclass
 class StructureCosts:
@@ -164,9 +180,34 @@ class StructureCosts:
         return asdict(self)
 
     @classmethod
-    def zero(cls) -> "DirectCostGroundWork":
+    def zero(cls) -> "StructureCosts":
         return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
 
+@dataclass
+class InfrastructureCosts:
+    remove_road: CostItem
+    build_road: CostItem
+    remove_bike_path: CostItem
+    build_bike_path: CostItem
+
+    def to_dict(self) -> dict:
+        """Serialize the dataclass to a dict"""
+        return asdict(self)
+
+    @classmethod
+    def zero(cls) -> "DirectCostGroundWork":
+        return cls(**{field: 0.0 for field in cls.__dataclass_fields__})
+    
+    @property
+    def totale_BDBK_infrastructuur(self) -> float:
+        """Benoemde Directe BouwKosten (BDBK)"""
+        return (
+            self.remove_road.value +
+            self.build_road.value +
+            self.remove_bike_path.value +
+            self.build_bike_path.value
+        )
+    
 class EnumerationComplexity(Enum):
     EASY = 'makkelijke maatregel'
     MEDIUM = 'gemiddelde maatregel'
@@ -223,12 +264,10 @@ class CostCalculator:
         """
         Calculate real estate costs based on base cost and surcharge percentage.
         """
-        ROAD_UNIT_COST = self.unit_price_dict['O-413'].price + self.unit_price_dict['O-513'].price
         COST_HOUSES = 700000
         return RealEstateCosts(
-            road_cost=road_area * ROAD_UNIT_COST,
             house_cost=nb_houses * COST_HOUSES,
-            total_real_estate_costs=road_area * ROAD_UNIT_COST + nb_houses * COST_HOUSES
+            total_real_estate_costs= nb_houses * COST_HOUSES
         )
 
     def calc_direct_cost_ground_work(self, volumes: dict) -> DirectCostGroundWork:
@@ -307,11 +346,15 @@ class CostCalculator:
         return ConstructionCosts(
             totale_BDBK_grondwerk=0.0,
             totale_BDBK_constructie=structure_cost,
+            totale_BDBK_infrastructuur=0.0,
             totale_directe_bouwkosten=directe_bouwkosten_constructie,
             pm_kosten=pm_cost,
             algemene_kosten=general_cost,
             risico_en_winst=risk_profit,
             indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten_grondwerk=0.0,
+            totale_bouwkosten_constructie=total_costs,
+            totale_bouwkosten_infrastructuur=0.0,
             totale_bouwkosten=total_costs,
         )
 
@@ -334,12 +377,16 @@ class CostCalculator:
 
         return ConstructionCosts(
             totale_BDBK_grondwerk=groundwork_cost,
+            totale_BDBK_infrastructuur=0.0,
             totale_BDBK_constructie=0.0,
             totale_directe_bouwkosten=directe_bouwkosten_grond,
             pm_kosten=pm_cost,
             algemene_kosten=general_cost,
             risico_en_winst=risk_profit,
             indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten_grondwerk=total_costs,
+            totale_bouwkosten_constructie=0.0,
+            totale_bouwkosten_infrastructuur=0.0,
             totale_bouwkosten=total_costs,
         )
 
@@ -410,19 +457,20 @@ class CostCalculator:
             total_general_costs=total_general_costs,
         )
 
-    def calc_risk_cost(self, investering_cost: float, grond_percentage: float) -> float:
+    def calc_risk_cost(self, investering_cost: float, construction_costs: ConstructionCosts) -> float:
         """
 
         :param investering_cost: Sum of the construction total cost, engineering total cost and general total costs
         """
-        investering_grond = investering_cost * grond_percentage
-        investering_constructie = investering_cost * (1 - grond_percentage)
+        investering_grond = investering_cost * (construction_costs.totale_bouwkosten_grondwerk/construction_costs.totale_bouwkosten)
+        investering_constructie = investering_cost * (construction_costs.totale_bouwkosten_constructie/construction_costs.totale_bouwkosten)
+        investering_infra = investering_cost * (construction_costs.totale_bouwkosten_infrastructuur/construction_costs.totale_bouwkosten)
         if self.complexity == EnumerationComplexity.EASY:
-            return (investering_grond * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0)
+            return (investering_grond * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0) + (investering_infra * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            return (investering_grond * self.surcharge_dict['Q-GGGEMONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCGEMONV'].price_percent / 100.0)
+            return (investering_grond * self.surcharge_dict['Q-GGGEMONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCGEMONV'].price_percent / 100.0) + (investering_infra * self.surcharge_dict['Q-GCGEMONV'].price_percent / 100.0)
         elif self.complexity == EnumerationComplexity.HARD:
-            return (investering_grond * self.surcharge_dict['Q-GGMOEONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMOEONV'].price_percent / 100.0)
+            return (investering_grond * self.surcharge_dict['Q-GGMOEONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMOEONV'].price_percent / 100.0) + (investering_infra * self.surcharge_dict['Q-GCMOEONV'].price_percent / 100.0)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
 
@@ -435,3 +483,47 @@ class CostCalculator:
 
         return StructureCosts(
             totale_BDBK_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
+    
+
+    def calc_direct_cost_infrastructure(self, road_area: float, bike_path_area: float = 0) -> float:
+        '''Assumption for now is that it is a regional road. We could improve this to distinguish between different types of roads. For now we set bike_path_area to 0 by default'''
+        remove_road = CostItem(unit_cost=self.unit_price_dict['O-413'].price, quantity=road_area, unit = 'm2')  # removing regional road if there is one
+        build_road = CostItem(unit_cost=self.unit_price_dict['O-513'].price, quantity=road_area, unit = 'm2')  # building regional road if there is one
+
+        remove_bike_path = CostItem(unit_cost=self.unit_price_dict['O-410'].price, quantity=bike_path_area, unit = 'm2')  # removing bike path if there is one
+        build_bike_path = CostItem(unit_cost=self.unit_price_dict['O-510'].price, quantity=bike_path_area, unit = 'm2')  # building bike path if there is one
+
+        return InfrastructureCosts(remove_road=remove_road, build_road=build_road, remove_bike_path=remove_bike_path, build_bike_path=build_bike_path)
+
+    def calc_construction_costs_infrastructure(self, infrastructure_cost: float) -> ConstructionCosts:
+        '''Uses same surhcarges as structures'''
+        if self.complexity == EnumerationComplexity.EASY:
+            directe_bouwkosten_infrastructuur = infrastructure_cost * (1 + self.surcharge_dict['Q-GCMAKNTD'].price_percent / 100)
+        elif self.complexity == EnumerationComplexity.MEDIUM:
+            directe_bouwkosten_infrastructuur = infrastructure_cost * (1 + self.surcharge_dict['Q-GCGEMNTD'].price_percent / 100)
+        elif self.complexity == EnumerationComplexity.HARD:
+            directe_bouwkosten_infrastructuur = infrastructure_cost * (1 + self.surcharge_dict['Q-GCMOENTD'].price_percent / 100)
+        else:
+            raise ValueError(f"Unsupported complexity level: {self.complexity}")
+
+        pm_cost = directe_bouwkosten_infrastructuur * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
+        general_cost = (directe_bouwkosten_infrastructuur + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
+        risk_profit = (directe_bouwkosten_infrastructuur + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
+
+        indirecte_bouwkosten = pm_cost + general_cost + risk_profit
+        total_costs = directe_bouwkosten_infrastructuur + indirecte_bouwkosten
+
+        return ConstructionCosts(
+            totale_BDBK_grondwerk=0.0,
+            totale_BDBK_constructie=0.0,
+            totale_BDBK_infrastructuur=infrastructure_cost,
+            totale_directe_bouwkosten=directe_bouwkosten_infrastructuur,
+            pm_kosten=pm_cost,
+            algemene_kosten=general_cost,
+            risico_en_winst=risk_profit,
+            indirecte_bouwkosten=indirecte_bouwkosten,
+            totale_bouwkosten_grondwerk=0.0,
+            totale_bouwkosten_constructie=0.0,
+            totale_bouwkosten_infrastructuur=infrastructure_cost,
+            totale_bouwkosten=total_costs,
+        )

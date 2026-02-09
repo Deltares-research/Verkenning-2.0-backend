@@ -48,18 +48,23 @@ class DikeModel:
             volumes = self.ground_model.calculate_all_dike_volumes()
             groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=volumes)
         if hasattr(self, 'structure_model'):
-
             structure_costs = calculator.calc_direct_cost_structure(wandlengte=self.structure_model.wandlengte,
                                                                     vaklengte=self.structure_model.length,
                                                                     cost_function_parameters=self.structure_model.cost_function_parameters)
+        infrastructure_cost  = calculator.calc_direct_cost_infrastructure(road_area=road_area)   
+        
+        total_direct_construction_cost_infrastructure = calculator.calc_construction_costs_infrastructure(infrastructure_cost=infrastructure_cost.totale_BDBK_infrastructuur)   
         total_direct_construction_cost_ground = calculator.calc_construction_costs_groundwork(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk)
         total_direct_construction_cost_structure = calculator.calc_construction_costs_structure(structure_cost=structure_costs.totale_BDBK_constructie)
-        total_direct_construction_cost = total_direct_construction_cost_ground.__add__(total_direct_construction_cost_structure)
+
+        
+
+        total_direct_construction_cost = total_direct_construction_cost_ground.__add__(total_direct_construction_cost_structure).__add__(total_direct_construction_cost_infrastructure)
 
         engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
         general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
         investering_cost = total_direct_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
-        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost, grond_percentage = total_direct_construction_cost_ground.totale_bouwkosten / total_direct_construction_cost.totale_bouwkosten if total_direct_construction_cost.totale_bouwkosten > 0 else 0) 
+        risk_cost = calculator.calc_risk_cost(investering_cost=investering_cost, construction_costs=total_direct_construction_cost) 
         real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses, road_area=road_area)
 
 
