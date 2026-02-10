@@ -11,8 +11,8 @@ from app.unit_costs_and_surcharges import load_kosten_catalogus
 
 @pytest.fixture(scope="session")
 def catalogue():
-    path_cost = Path(__file__).parent.joinpath("datasets/eenheidsprijzen.json")
-    path_opslag_factor = Path(__file__).parent.joinpath("datasets/opslagfactoren.json")
+    path_cost = Path("app/datasets/eenheidsprijzen.json")
+    path_opslag_factor = Path("app/datasets/opslagfactoren.json")
 
     return load_kosten_catalogus(
         eenheidsprijzen=str(path_cost),
