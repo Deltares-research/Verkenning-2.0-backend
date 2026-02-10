@@ -50,20 +50,22 @@ class DikeModel:
         if hasattr(self, 'structure_model'):
             structure_costs = calculator.calc_direct_cost_structure(wandlengte=self.structure_model.wandlengte,
                                                                     vaklengte=self.structure_model.length,
-                                                                    cost_function_parameters=self.structure_model.cost_function_parameters)
+                                                                    cost_function_parameters=self.structure_model.cost_function_parameters,
+                                                                    structure_type=self.structure_model.constructietype)
         infrastructure_cost  = calculator.calc_direct_cost_infrastructure(road_area=road_area)   
 
-        total_direct_construction_cost = calculator.calc_construction_costs(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk, 
+        total_construction_cost = calculator.calc_construction_costs(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk, 
                                                                             structure_cost=structure_costs.totale_BDBK_constructie, 
                                                                             infrastructure_cost=infrastructure_cost.totale_BDBK_infrastructuur)
 
 
-        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
-        general_cost = calculator.calc_general_costs(construction_cost=total_direct_construction_cost.totale_bouwkosten)
+        engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_construction_cost.totale_bouwkosten)
 
-        _investering_cost = total_direct_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+        general_cost = calculator.calc_general_costs(construction_cost=total_construction_cost.totale_bouwkosten)
 
-        risk_cost = calculator.calc_risk_cost(investering_cost=_investering_cost, construction_costs=total_direct_construction_cost) 
+        _investering_cost = total_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
+
+        risk_cost = calculator.calc_risk_cost(investering_cost=_investering_cost, construction_costs=total_construction_cost) 
         real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses)
 
 
@@ -74,9 +76,10 @@ class DikeModel:
         return { 
             "Directe kosten grondwerk": groundwork_cost.to_dict(),
             "Directe kosten constructies": structure_costs.to_dict(),
-            "Indirecte bouwkosten": total_direct_construction_cost.to_dict(),
+            "Directe kosten infrastructuur": infrastructure_cost.to_dict(),
+            "Indirecte bouwkosten": total_construction_cost.to_dict(),
             "Engineeringkosten": engineering_cost.to_dict(),
             "Overige bijkomende kosten": general_cost.to_dict(),
-            "Risicoreservering": risk_cost,
+            "Risicoreservering": risk_cost.to_dict(),
             "Vastgoedkosten": real_estate_costs.to_dict(),
                 }

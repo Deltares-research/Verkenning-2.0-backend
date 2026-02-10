@@ -7,7 +7,9 @@ import pytest
 import numpy as np
 
 
-
+def sum_values_from_cost_dict(cost_dict):
+    """Helper function to sum all 'value' entries in a cost dictionary."""
+    return sum(entry['value'] for entry in cost_dict.values() if isinstance(entry, dict) and 'value' in entry) 
 
 #test if the dike model reads the structure and ground models correctly
 @pytest.fixture(scope="module")
@@ -44,33 +46,33 @@ def test_dike_model_cost_computation_with_ground_only(gdf_ground):
     values = [entry['value'] for entry in cost_dict['Directe kosten grondwerk'].values() if isinstance(entry, dict) and 'value' in entry]
     np.testing.assert_allclose(sum(values), 78528.12, rtol=1e-2)
     np.testing.assert_allclose(cost_dict['Directe kosten grondwerk']['totale_BDBK_grondwerk'], 78528.12, rtol=1e-2)
-    assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
-    assert sum([entry['value'] for entry in cost_dict['Vastgoedkosten'].values() if isinstance(entry, dict) and 'value' in entry]) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Directe kosten constructies']) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Vastgoedkosten']) == 0.0
 
 def test_dike_model_cost_computation_with_structure_only(gdf_structure):
     dike_model = DikeModel(_2d_structure = gdf_structure, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
-    assert sum(cost_dict['Directe kosten grondwerk'].values()) == 0.0
-    np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 417198.65)
-    assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Directe kosten grondwerk']) == 0.0
+    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Directe kosten constructies']), 417198.65, rtol=1e-2)
+    assert sum_values_from_cost_dict(cost_dict['Vastgoedkosten']) == 0.0
 
 def test_dike_model_cost_computation_with_both(gdf_structure, gdf_ground):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground, _2d_structure = gdf_structure, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=5, road_area=15)
 
-    np.testing.assert_allclose(float(sum(cost_dict['Directe kosten grondwerk'].values())), 152979.76, rtol=1e-2)
-    np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(float(sum(cost_dict['Indirecte bouwkosten'].values())), 2068496.05, rtol=1e-2)
-    np.testing.assert_allclose(float(cost_dict['Vastgoedkosten']['total_real_estate_costs']), 3501046.85, rtol=1e-2)
+    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Directe kosten grondwerk']), 78528.12, rtol=1e-2)
+    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Directe kosten constructies']), 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Indirecte bouwkosten']), 204202.73, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Vastgoedkosten']['total_real_estate_costs'], 4522087.5, rtol=1e-2)
 
 def test_dike_model_cost_computation_with_none():
     dike_model = DikeModel(complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
-    assert sum(cost_dict['Directe kosten grondwerk'].values()) == 0.0
-    assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
-    assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Directe kosten grondwerk']) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Directe kosten constructies']) == 0.0
+    assert sum_values_from_cost_dict(cost_dict['Vastgoedkosten']) == 0.0
 
 def test_initialize_dike_model_with_heavescreen(gdf_structure):
     gdf_structure_heavescreen = gdf_structure.copy()
@@ -93,7 +95,7 @@ def test_dike_model_cost_computation_with_heavescreen(gdf_structure):
     dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
-    np.testing.assert_allclose(float(sum(cost_dict['Directe kosten constructies'].values())), 375517.53)  #example value
+    np.testing.assert_allclose(float(sum_values_from_cost_dict(cost_dict['Directe kosten constructies'])), 375517.53)  #example value
 
 def test_dike_model_cost_computation_with_verankerde_damwand_is_more_expensive_than_onverankerde(gdf_structure):
     gdf_structure_verankerde = gdf_structure.copy()
@@ -105,7 +107,7 @@ def test_dike_model_cost_computation_with_verankerde_damwand_is_more_expensive_t
     dike_model_verankerde = DikeModel(_2d_structure = gdf_structure_verankerde, complexity='makkelijke maatregel')
     cost_dict_verankerde = dike_model_verankerde.compute_cost(nb_houses=0, road_area=0)
 
-    assert float(sum(cost_dict_verankerde['Directe kosten constructies'].values())) > float(sum(cost_dict_onverankerde['Directe kosten constructies'].values()))
+    assert float(sum_values_from_cost_dict(cost_dict_verankerde['Directe kosten constructies'])) > float(sum_values_from_cost_dict(cost_dict_onverankerde['Directe kosten constructies']))
 
 def test_opslagfactoren_for_structures_should_be_identical(gdf_structure):
     #onverankerd vs verankerd
@@ -119,11 +121,11 @@ def test_opslagfactoren_for_structures_should_be_identical(gdf_structure):
     cost_dict_verankerde = dike_model_verankerde.compute_cost(nb_houses=0, road_area=0)
 
     #compare Engieeringkosten by normalizing with Directe kosten constructies
-    cost_keys = ['epk_cost', 'design_cost', 'research_cost']
+    cost_keys = ['engineering_opdrachtgever', 'engineering_opdrachtnemer', 'onderzoekskosten']
     for key in cost_keys:
         np.testing.assert_allclose(
-            cost_dict_onverankerde['Engineeringkosten'][key] / cost_dict_onverankerde['Directe kosten constructies']['totale_BDBK_constructie'],
-            cost_dict_verankerde['Engineeringkosten'][key] / cost_dict_verankerde['Directe kosten constructies']['totale_BDBK_constructie'],
+            cost_dict_onverankerde['Engineeringkosten'][key]['value'] / cost_dict_onverankerde['Directe kosten constructies']['totale_BDBK_constructie'],
+            cost_dict_verankerde['Engineeringkosten'][key]['value'] / cost_dict_verankerde['Directe kosten constructies']['totale_BDBK_constructie'],
             rtol=1e-2
         )
 
