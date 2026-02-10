@@ -388,7 +388,7 @@ class CostCalculator:
             return CostItem(quantity=quantity, unit_cost=self.unit_price_dict[unit_cost_code].price, unit=unit, description=self.unit_price_dict[unit_cost_code].description)
         
         ### Combine to get costs
-        kosten_opruimen             = build_cost_item(S0, 'Q-GV010', 'm2') # opruimen terrein
+        kosten_opruimen             = build_cost_item(S0, 'Q-AW010', 'm2') # opruimen terrein
         kosten_maaien               = build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
         afgraven_toplaag            = build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
         afgraven_oud_materiaal      = build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!

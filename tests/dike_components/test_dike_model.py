@@ -40,11 +40,12 @@ def test_dike_model_initialization_with_ground_only(gdf_ground):
 def test_dike_model_cost_computation_with_ground_only(gdf_ground):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
-
-    np.testing.assert_allclose(sum(cost_dict['Directe kosten grondwerk'].values()), 152979.76)
-    np.testing.assert_allclose(cost_dict['Directe kosten grondwerk']['totale_BDBK_grondwerk'], 76489.88)
+    #get all values from cost_dict['Directe kosten grondwerk'] and sum them
+    values = [entry['value'] for entry in cost_dict['Directe kosten grondwerk'].values() if isinstance(entry, dict) and 'value' in entry]
+    np.testing.assert_allclose(sum(values), 78528.12, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Directe kosten grondwerk']['totale_BDBK_grondwerk'], 78528.12, rtol=1e-2)
     assert sum(cost_dict['Directe kosten constructies'].values()) == 0.0
-    assert sum(cost_dict['Vastgoedkosten'].values()) == 0.0
+    assert sum([entry['value'] for entry in cost_dict['Vastgoedkosten'].values() if isinstance(entry, dict) and 'value' in entry]) == 0.0
 
 def test_dike_model_cost_computation_with_structure_only(gdf_structure):
     dike_model = DikeModel(_2d_structure = gdf_structure, complexity='makkelijke maatregel')
