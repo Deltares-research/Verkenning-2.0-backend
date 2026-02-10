@@ -28,6 +28,19 @@ class SurchargeCostItem:
     def zero(cls) -> "SurchargeCostItem":
         return SurchargeCostItem(code='', surcharge_percentage=0.0, base_cost=0.0)
     
+    def __add__(self, other: Self) -> Self:
+        #determine the new surcharge percentage based on the weights of the base costs
+        total_base_cost = self.base_cost + other.base_cost
+        if total_base_cost > 0:
+            new_surcharge_percentage = (self.value + other.value) / total_base_cost * 100.0
+        else:
+            new_surcharge_percentage = 0.0
+        return SurchargeCostItem(
+            code='',
+            surcharge_percentage=new_surcharge_percentage,
+            base_cost=total_base_cost
+        )
+
 @dataclass
 class CostItem:
     unit_cost: float
@@ -44,6 +57,7 @@ class CostItem:
 
     def to_dict(self) -> dict:
         return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit}
+
 
 
 @dataclass
@@ -133,6 +147,15 @@ class ConstructionCosts:
     @property
     def totale_bouwkosten(self) -> float:
         return self.totale_directe_bouwkosten + self.indirecte_bouwkosten
+    @property
+    def totale_directe_bouwkosten_grondwerk(self) -> float:
+        return self.totale_BDBK_grondwerk + self.directe_niet_benoemde_bouwkosten_grondwerk.value
+    @property
+    def totale_directe_bouwkosten_constructie(self) -> float:
+        return self.totale_BDBK_constructie + self.directe_niet_benoemde_bouwkosten_constructie.value
+    @property
+    def totale_directe_bouwkosten_infrastructuur(self) -> float:
+        return self.totale_BDBK_infrastructuur + self.directe_niet_benoemde_bouwkosten_infrastructuur.value
     
 
     def to_dict(self) -> dict:
@@ -386,6 +409,45 @@ class CostCalculator:
             profieleren_nieuwe_graslaag_cost=profieleren_nieuwe_graslaag_cost
         )
 
+    def calc_construction_costs(self, groundwork_cost: float = 0.0, structure_cost: float = 0.0, infrastructure_cost: float = 0.0) -> ConstructionCosts:
+        if self.complexity == EnumerationComplexity.EASY:
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GGMAKNTD'].price_percent, base_cost=groundwork_cost)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=infrastructure_cost)
+        elif self.complexity == EnumerationComplexity.MEDIUM:
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GGGEMNTD'].price_percent, base_cost=groundwork_cost)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=structure_cost)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=infrastructure_cost)
+        elif self.complexity == EnumerationComplexity.HARD:
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMOENTD', surcharge_percentage=self.surcharge_dict['Q-GGMOENTD'].price_percent, base_cost=groundwork_cost)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=structure_cost)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=infrastructure_cost)
+        else:
+            raise ValueError(f"Unsupported complexity level: {self.complexity}")
+
+        directe_niet_benoemde_bouwkosten = directe_niet_benoemde_bouwkosten_grondwerk.__add__(directe_niet_benoemde_bouwkosten_constructie).__add__(directe_niet_benoemde_bouwkosten_infrastructuur)
+
+        directe_bouwkosten = groundwork_cost + structure_cost + infrastructure_cost + directe_niet_benoemde_bouwkosten.value
+
+        pm_cost = SurchargeCostItem(code="Q-EKABKUKMAN", surcharge_percentage=self.surcharge_dict["Q-EKABKUKMAN"].price_percent, base_cost=directe_bouwkosten)
+        general_cost = SurchargeCostItem(code="Q-AK", surcharge_percentage=self.surcharge_dict["Q-AK"].price_percent, base_cost=directe_bouwkosten + pm_cost.value)  # Algemene kosten
+        risk_profit = SurchargeCostItem(code="Q-WR", surcharge_percentage=self.surcharge_dict["Q-WR"].price_percent, base_cost=directe_bouwkosten + pm_cost.value + general_cost.value)  # Winst & risico
+
+        indirecte_bouwkosten = pm_cost.value + general_cost.value + risk_profit.value
+        total_costs = directe_bouwkosten + indirecte_bouwkosten
+
+        return ConstructionCosts(
+            totale_BDBK_grondwerk=groundwork_cost,
+            totale_BDBK_constructie=structure_cost,
+            totale_BDBK_infrastructuur=infrastructure_cost,
+            directe_niet_benoemde_bouwkosten_grondwerk = directe_niet_benoemde_bouwkosten_grondwerk,
+            directe_niet_benoemde_bouwkosten_constructie=directe_niet_benoemde_bouwkosten_constructie,
+            directe_niet_benoemde_bouwkosten_infrastructuur=directe_niet_benoemde_bouwkosten_infrastructuur,
+            pm_kosten=pm_cost,
+            algemene_kosten=general_cost,
+            risico_en_winst=risk_profit,
+        )
+
     def calc_construction_costs_structure(self, structure_cost: float) -> ConstructionCosts:
         if self.complexity == EnumerationComplexity.EASY:
             directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost)
@@ -403,7 +465,6 @@ class CostCalculator:
 
         indirecte_bouwkosten = pm_cost.value + general_cost.value + risk_profit.value
         total_costs = directe_bouwkosten_constructie + indirecte_bouwkosten
-
 
         return ConstructionCosts(
             totale_BDBK_grondwerk=0.0,
@@ -521,9 +582,10 @@ class CostCalculator:
 
         :param investering_cost: Sum of the construction total cost, engineering total cost and general total costs
         """
-        investering_grond = investering_cost * (construction_costs.totale_bouwkosten_grondwerk/construction_costs.totale_bouwkosten)
-        investering_constructie = investering_cost * (construction_costs.totale_bouwkosten_constructie/construction_costs.totale_bouwkosten)
-        investering_infra = investering_cost * (construction_costs.totale_bouwkosten_infrastructuur/construction_costs.totale_bouwkosten)
+        #get the total investments for each component based on the share of the directe bouwkosten
+        investering_grond = investering_cost * (construction_costs.totale_directe_bouwkosten_grondwerk/construction_costs.totale_directe_bouwkosten)
+        investering_constructie = investering_cost * (construction_costs.totale_directe_bouwkosten_constructie/construction_costs.totale_directe_bouwkosten)
+        investering_infra = investering_cost * (construction_costs.totale_directe_bouwkosten_infrastructuur/construction_costs.totale_directe_bouwkosten)
         if self.complexity == EnumerationComplexity.EASY:
             return (investering_grond * self.surcharge_dict['Q-GGMAKONV'].price_percent / 100.0) + (investering_constructie * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0) + (investering_infra * self.surcharge_dict['Q-GCMAKONV'].price_percent / 100.0)
         elif self.complexity == EnumerationComplexity.MEDIUM:
