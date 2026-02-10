@@ -1,17 +1,20 @@
 from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Dict, Self
+from unicodedata import name
 
 #dataclasses for catalogue items 
 @dataclass
 class SurchargeUnitItem:
     code: str
     price_percent: float  # renamed from prijs to make it clear it's a percentage
+    description: str
 
 @dataclass
 class UnitPriceItem:
     code: str
     price: float  # renamed from prijs to make it clear it's a percentage
+    description: str
 
 #dataclasses for computed costs.
 @dataclass
@@ -19,6 +22,7 @@ class SurchargeCostItem:
     code: str
     surcharge_percentage: float #original percentage from the catalog
     base_cost: float
+    description: str = '' #Optional human readable name for the cost item, e.g. "Algemene kosten"
 
     @property
     def value(self) -> float:
@@ -47,6 +51,7 @@ class CostItem:
     quantity: float
     unit: str
     dimension: str = None #Optional for e.g. sheetpile length
+    description: str = '' #Optional human readable description of the cost item, e.g. "Kosten voor het aanbrengen van een nieuwe kleilaag"
 
     @property
     def value(self) -> float:
@@ -56,55 +61,62 @@ class CostItem:
             return 0
 
     def to_dict(self) -> dict:
-        return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit}
+        return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit, "description": self.description}
 
 
 
 @dataclass
 class DirectCostGroundWork:
-    preparation_cost: CostItem
-    afgraven_grasbekleding_cost: CostItem
-    afgraven_kleilaag_cost: CostItem
-    herkeuren_kleilaag_cost: CostItem
-    aanvullen_kern_cost: CostItem
-    profieleren_dijkkern_cost: CostItem
-    aanbregen_nieuwe_kleilaag_cost: CostItem
-    profieleren_vannieuwe_kleilaag_cost: CostItem
-    hergebruik_teelaarde_cost: CostItem
-    aanvullen_teelaarde_cost: CostItem
-    profieleren_nieuwe_graslaag_cost: CostItem
+    kosten_opruimen: CostItem           
+    kosten_maaien: CostItem             
+    afgraven_toplaag: CostItem          
+    afgraven_oud_materiaal: CostItem    
+    hergebruik_oud_materiaal: CostItem  
+    aanvullen_kern: CostItem            
+    profileren_dijkkern: CostItem       
+    aanbrengen_nieuwe_kleilaag: CostItem
+    profileren_nieuwe_kleilaag: CostItem
+    hergebruik_toplaag: CostItem
+    aanvullen_toplaag: CostItem
+    profileren_nieuwe_toplaag: CostItem
+    inzaaien_nieuwe_toplaag: CostItem
+
 
     @property
     def totale_BDBK_grondwerk(self) -> float:
         """Benoemde Directe BouwKosten (BDBK)"""
         return (
-            self.preparation_cost.value +
-            self.afgraven_grasbekleding_cost.value +
-            self.afgraven_kleilaag_cost.value +
-            self.herkeuren_kleilaag_cost.value +
-            self.aanvullen_kern_cost.value +
-            self.profieleren_dijkkern_cost.value +
-            self.aanbregen_nieuwe_kleilaag_cost.value +
-            self.profieleren_vannieuwe_kleilaag_cost.value +
-            self.hergebruik_teelaarde_cost.value +
-            self.aanvullen_teelaarde_cost.value +
-            self.profieleren_nieuwe_graslaag_cost.value
+            self.kosten_opruimen.value +
+            self.kosten_maaien.value +
+            self.afgraven_toplaag.value +
+            self.afgraven_oud_materiaal.value +
+            self.hergebruik_oud_materiaal.value +
+            self.aanvullen_kern.value +
+            self.profileren_dijkkern.value +
+            self.aanbrengen_nieuwe_kleilaag.value +
+            self.profileren_nieuwe_kleilaag.value +
+            self.hergebruik_toplaag.value +
+            self.aanvullen_toplaag.value +
+            self.profileren_nieuwe_toplaag.value +
+            self.inzaaien_nieuwe_toplaag.value
         )
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         data = {
-            'preparation_cost': self.preparation_cost.to_dict(),
-            'afgraven_grasbekleding_cost': self.afgraven_grasbekleding_cost.to_dict(),
-            'afgraven_kleilaag_cost': self.afgraven_kleilaag_cost.to_dict(),
-            'herkeuren_kleilaag_cost': self.herkeuren_kleilaag_cost.to_dict(),
-            'aanvullen_kern_cost': self.aanvullen_kern_cost.to_dict(),
-            'profieleren_dijkkern_cost': self.profieleren_dijkkern_cost.to_dict(),
-            'aanbregen_nieuwe_kleilaag_cost': self.aanbregen_nieuwe_kleilaag_cost.to_dict(),
-            'profieleren_vannieuwe_kleilaag_cost': self.profieleren_vannieuwe_kleilaag_cost.to_dict(),
-            'hergebruik_teelaarde_cost': self.hergebruik_teelaarde_cost.to_dict(),
-            'aanvullen_teelaarde_cost': self.aanvullen_teelaarde_cost.to_dict(),
-            'profieleren_nieuwe_graslaag_cost': self.profieleren_nieuwe_graslaag_cost.to_dict(),
+            'kosten_opruimen': self.kosten_opruimen.to_dict(),
+            'kosten_maaien': self.kosten_maaien.to_dict(),
+            'afgraven_toplaag': self.afgraven_toplaag.to_dict(),
+            'afgraven_oud_materiaal': self.afgraven_oud_materiaal.to_dict(),
+            'hergebruik_oud_materiaal': self.hergebruik_oud_materiaal.to_dict(),
+            'aanvullen_kern': self.aanvullen_kern.to_dict(),
+            'profileren_dijkkern': self.profileren_dijkkern.to_dict(),
+            'aanbrengen_nieuwe_kleilaag': self.aanbrengen_nieuwe_kleilaag.to_dict(),
+            'profileren_nieuwe_kleilaag': self.profileren_nieuwe_kleilaag.to_dict(),
+            'hergebruik_toplaag': self.hergebruik_toplaag.to_dict(),
+            'aanvullen_toplaag': self.aanvullen_toplaag.to_dict(),
+            'profileren_nieuwe_toplaag': self.profileren_nieuwe_toplaag.to_dict(),
+            'inzaaien_nieuwe_toplaag': self.inzaaien_nieuwe_toplaag.to_dict(),
             'totale_BDBK_grondwerk': self.totale_BDBK_grondwerk
         }
         return data
@@ -131,13 +143,6 @@ class ConstructionCosts:
     algemene_kosten: SurchargeCostItem
     risico_en_winst: SurchargeCostItem
 
-    # #properties
-    # totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
-    # indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
-    # totale_bouwkosten_grondwerk: float #Indirecte en directe bouwkosten (Totaal)
-    # totale_bouwkosten_constructie: float #Indirecte en directe bouwkosten (Totaal)
-    # totale_bouwkosten_infrastructuur: float #Indirecte en directe bouwkosten (Totaal)
-    # totale_bouwkosten: float # Totaal bouwkosten (TBK) (DBK + IBK)
     @property
     def totale_directe_bouwkosten(self) -> float:
         return self.totale_BDBK_grondwerk + self.totale_BDBK_constructie + self.totale_BDBK_infrastructuur + self.directe_niet_benoemde_bouwkosten_grondwerk.value + self.directe_niet_benoemde_bouwkosten_constructie.value + self.directe_niet_benoemde_bouwkosten_infrastructuur.value
@@ -315,12 +320,12 @@ class CostCalculator:
             all_items_unit_prices.extend(catalogue.categorieen[cat])
 
         self.surcharge_dict: Dict[str, SurchargeUnitItem] = {
-            item.code: SurchargeUnitItem(item.code, item.prijs)
+            item.code: SurchargeUnitItem(item.code, item.prijs, item.omschrijving)
             for item in all_items_surcharges
         }
 
         self.unit_price_dict: Dict[str, UnitPriceItem] = {
-            item.code: UnitPriceItem(item.code, item.prijs)
+            item.code: UnitPriceItem(item.code, item.prijs, item.omschrijving)
             for item in all_items_unit_prices
         }
 
@@ -379,34 +384,39 @@ class CostCalculator:
         S0 = volumes['S0']  # surface area beyond the toe of the old dike
         S5 = volumes['S5']  # surface area beyond the toe of the old dike
 
+        def build_cost_item(quantity, unit_cost_code, unit):
+            return CostItem(quantity=quantity, unit_cost=self.unit_price_dict[unit_cost_code].price, unit=unit, description=self.unit_price_dict[unit_cost_code].description)
+        
         ### Combine to get costs
-        unit_cost_preparation = Q_AW010 + Q_AW020
-        unit_cost_profieleren_nieuwe_graslaag = Q_GV120 - Q_AW030
-
-        preparation_cost = CostItem(quantity=S0, unit_cost=unit_cost_preparation, unit='m2')  # Voorbereiden terrein
-        afgraven_grasbekleding_cost = CostItem(quantity=V1b, unit_cost=Q_GV010, unit='m3')  # afgraven oude grasbekleding naar depot
-        afgraven_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV030, unit='m3')  # afgraven oude kleilaag naar depot
-        herkeuren_kleilaag_cost = CostItem(quantity=V2b, unit_cost=Q_GV050, unit='m3')  # hergebruiken oude kleilaag in nieuwe kern
-        aanvullen_kern_cost = CostItem(quantity=(V5 + V1b), unit_cost=Q_GV090, unit='m3')  # aanvullen nieuwe kern met nieuw materiaal
-        profieleren_dijkkern_cost = CostItem(quantity=S5, unit_cost=Q_GV100, unit='m2')  # profieleren van dijkkern
-        aanbregen_nieuwe_kleilaag_cost = CostItem(quantity=V4, unit_cost=Q_GV080, unit='m3')  # aanbregen nieuwe kleilaag
-        profieleren_vannieuwe_kleilaag_cost = CostItem(quantity=S5, unit_cost=Q_GV110, unit='m3')  # profileren nieuwe kleilaar
-        hergebruik_teelaarde_cost = CostItem(quantity=V1b, unit_cost=Q_GV060, unit='m3')  # hergebruiken teelaarde in nieuwe bekleding
-        aanvullen_teelaarde_cost = CostItem(quantity=(V3 - V1b), unit_cost=Q_GV070, unit='m3')  # aanvullen teelaarde in nieuwe bekleding
-        profieleren_nieuwe_graslaag_cost = CostItem(quantity=S5, unit_cost=unit_cost_profieleren_nieuwe_graslaag, unit='m2')  # profileren nieuwe graslaag en inzaaien
+        kosten_opruimen             = build_cost_item(S0, 'Q-GV010', 'm2') # opruimen terrein
+        kosten_maaien               = build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
+        afgraven_toplaag            = build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
+        afgraven_oud_materiaal      = build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!
+        hergebruik_oud_materiaal    = build_cost_item(V2b, 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern #TODO CHECK!
+        aanvullen_kern              = build_cost_item((V5 + V1b), 'Q-GV090', 'm3')  # aanvullen nieuwe kern met nieuw materiaal
+        profileren_dijkkern         = build_cost_item(S5, 'Q-GV100', 'm2')  # profileren van dijkkern
+        aanbrengen_nieuwe_kleilaag  = build_cost_item(V4, 'Q-GV080', 'm3')  # aanbrengen nieuwe kleilaag
+        profileren_nieuwe_kleilaag  = build_cost_item(S5, 'Q-GV110', 'm2')  # profileren nieuwe kleilaag
+        hergebruik_toplaag          = build_cost_item(V1b, 'Q-GV060', 'm3')  # hergebruiken teelaarde in nieuwe toplaag
+        aanvullen_toplaag           = build_cost_item((V3 - V1b), 'Q-GV070', 'm3')  # aanvullen teelaarde in nieuwe toplaag
+        profileren_nieuwe_toplaag   = build_cost_item(S5, 'Q-GV120', 'm2')  # profileren nieuwe graslaag en inzaaien
+        inzaaien_nieuwe_toplaag     = build_cost_item(S5, 'Q-AW030', 'm2')  # profileren nieuwe graslaag en inzaaien
+        
 
         return DirectCostGroundWork(
-            preparation_cost=preparation_cost,
-            afgraven_grasbekleding_cost=afgraven_grasbekleding_cost,
-            afgraven_kleilaag_cost=afgraven_kleilaag_cost,
-            herkeuren_kleilaag_cost=herkeuren_kleilaag_cost,
-            aanvullen_kern_cost=aanvullen_kern_cost,
-            profieleren_dijkkern_cost=profieleren_dijkkern_cost,
-            aanbregen_nieuwe_kleilaag_cost=aanbregen_nieuwe_kleilaag_cost,
-            profieleren_vannieuwe_kleilaag_cost=profieleren_vannieuwe_kleilaag_cost,
-            hergebruik_teelaarde_cost=hergebruik_teelaarde_cost,
-            aanvullen_teelaarde_cost=aanvullen_teelaarde_cost,
-            profieleren_nieuwe_graslaag_cost=profieleren_nieuwe_graslaag_cost
+            kosten_opruimen=kosten_opruimen,
+            kosten_maaien=kosten_maaien,
+            afgraven_toplaag=afgraven_toplaag,
+            afgraven_oud_materiaal=afgraven_oud_materiaal,
+            hergebruik_oud_materiaal=hergebruik_oud_materiaal,
+            aanvullen_kern=aanvullen_kern,
+            profileren_dijkkern=profileren_dijkkern,
+            aanbrengen_nieuwe_kleilaag=aanbrengen_nieuwe_kleilaag,
+            profileren_nieuwe_kleilaag=profileren_nieuwe_kleilaag,
+            hergebruik_toplaag=hergebruik_toplaag,
+            aanvullen_toplaag=aanvullen_toplaag,
+            profileren_nieuwe_toplaag=profileren_nieuwe_toplaag,
+            inzaaien_nieuwe_toplaag=inzaaien_nieuwe_toplaag
         )
 
     def calc_construction_costs(self, groundwork_cost: float = 0.0, structure_cost: float = 0.0, infrastructure_cost: float = 0.0) -> ConstructionCosts:
