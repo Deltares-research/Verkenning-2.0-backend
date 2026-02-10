@@ -2,9 +2,9 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Dict, Self
 
-
+#dataclasses for catalogue items 
 @dataclass
-class SurchargeItem:
+class SurchargeUnitItem:
     code: str
     price_percent: float  # renamed from prijs to make it clear it's a percentage
 
@@ -13,12 +13,27 @@ class UnitPriceItem:
     code: str
     price: float  # renamed from prijs to make it clear it's a percentage
 
+#dataclasses for computed costs.
+@dataclass
+class SurchargeCostItem:
+    code: str
+    surcharge_percentage: float #original percentage from the catalog
+    base_cost: float
 
+    @property
+    def value(self) -> float:
+        return self.base_cost * self.surcharge_percentage / 100.0
+    
+    @classmethod
+    def zero(cls) -> "SurchargeCostItem":
+        return SurchargeCostItem(code='', surcharge_percentage=0.0, base_cost=0.0)
+    
 @dataclass
 class CostItem:
     unit_cost: float
     quantity: float
     unit: str
+    dimension: str = None #Optional for e.g. sheetpile length
 
     @property
     def value(self) -> float:
@@ -89,18 +104,36 @@ class DirectCostGroundWork:
 
 @dataclass
 class ConstructionCosts:
+    #input values
     totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
     totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
     totale_BDBK_infrastructuur: float # Benoemde Directe BouwKosten (BDBK) (deel infrastructuur)
-    totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
-    pm_kosten: float
-    algemene_kosten: float
-    risico_en_winst: float
-    indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
-    totale_bouwkosten_grondwerk: float #Indirecte en directe bouwkosten (Totaal)
-    totale_bouwkosten_constructie: float #Indirecte en directe bouwkosten (Totaal)
-    totale_bouwkosten_infrastructuur: float #Indirecte en directe bouwkosten (Totaal)
-    totale_bouwkosten: float # Totaal bouwkosten (TBK) (DBK + IBK)
+
+    #computed values
+    directe_niet_benoemde_bouwkosten_grondwerk: SurchargeCostItem
+    directe_niet_benoemde_bouwkosten_constructie: SurchargeCostItem
+    directe_niet_benoemde_bouwkosten_infrastructuur: SurchargeCostItem
+    pm_kosten: SurchargeCostItem
+    algemene_kosten: SurchargeCostItem
+    risico_en_winst: SurchargeCostItem
+
+    # #properties
+    # totale_directe_bouwkosten: float # Directe bouwkosten (DBK)
+    # indirecte_bouwkosten: float # Indirecte bouwkosten (IBK)
+    # totale_bouwkosten_grondwerk: float #Indirecte en directe bouwkosten (Totaal)
+    # totale_bouwkosten_constructie: float #Indirecte en directe bouwkosten (Totaal)
+    # totale_bouwkosten_infrastructuur: float #Indirecte en directe bouwkosten (Totaal)
+    # totale_bouwkosten: float # Totaal bouwkosten (TBK) (DBK + IBK)
+    @property
+    def totale_directe_bouwkosten(self) -> float:
+        return self.totale_BDBK_grondwerk + self.totale_BDBK_constructie + self.totale_BDBK_infrastructuur + self.directe_niet_benoemde_bouwkosten_grondwerk.value + self.directe_niet_benoemde_bouwkosten_constructie.value + self.directe_niet_benoemde_bouwkosten_infrastructuur.value
+    @property
+    def indirecte_bouwkosten(self) -> float:
+        return self.pm_kosten.value + self.algemene_kosten.value + self.risico_en_winst.value
+    @property
+    def totale_bouwkosten(self) -> float:
+        return self.totale_directe_bouwkosten + self.indirecte_bouwkosten
+    
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -258,8 +291,8 @@ class CostCalculator:
         for cat in categories_unit_prices:
             all_items_unit_prices.extend(catalogue.categorieen[cat])
 
-        self.surcharge_dict: Dict[str, SurchargeItem] = {
-            item.code: SurchargeItem(item.code, item.prijs)
+        self.surcharge_dict: Dict[str, SurchargeUnitItem] = {
+            item.code: SurchargeUnitItem(item.code, item.prijs)
             for item in all_items_surcharges
         }
 
@@ -355,33 +388,33 @@ class CostCalculator:
 
     def calc_construction_costs_structure(self, structure_cost: float) -> ConstructionCosts:
         if self.complexity == EnumerationComplexity.EASY:
-            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMAKNTD'].price_percent / 100)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCGEMNTD'].price_percent / 100)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=structure_cost)
         elif self.complexity == EnumerationComplexity.HARD:
-            directe_bouwkosten_constructie = structure_cost * (1 + self.surcharge_dict['Q-GCMOENTD'].price_percent / 100)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=structure_cost)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
+        directe_bouwkosten_constructie = structure_cost + directe_niet_benoemde_bouwkosten_constructie.value
 
-        pm_cost = directe_bouwkosten_constructie * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
-        general_cost = (directe_bouwkosten_constructie + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
-        risk_profit = (directe_bouwkosten_constructie + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
-        indirecte_bouwkosten = pm_cost + general_cost + risk_profit
+        pm_cost = SurchargeCostItem(code="Q-EKABKUKMAN", surcharge_percentage=self.surcharge_dict["Q-EKABKUKMAN"].price_percent, base_cost=directe_bouwkosten_constructie)
+        general_cost = SurchargeCostItem(code="Q-AK", surcharge_percentage=self.surcharge_dict["Q-AK"].price_percent, base_cost=directe_bouwkosten_constructie + pm_cost.value)  # Algemene kosten
+        risk_profit = SurchargeCostItem(code="Q-WR", surcharge_percentage=self.surcharge_dict["Q-WR"].price_percent, base_cost=directe_bouwkosten_constructie + pm_cost.value + general_cost.value)  # Winst & risico
+
+        indirecte_bouwkosten = pm_cost.value + general_cost.value + risk_profit.value
         total_costs = directe_bouwkosten_constructie + indirecte_bouwkosten
+
 
         return ConstructionCosts(
             totale_BDBK_grondwerk=0.0,
             totale_BDBK_constructie=structure_cost,
             totale_BDBK_infrastructuur=0.0,
-            totale_directe_bouwkosten=directe_bouwkosten_constructie,
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem.zero(),
+            directe_niet_benoemde_bouwkosten_constructie=directe_niet_benoemde_bouwkosten_constructie,
+            directe_niet_benoemde_bouwkosten_infrastructuur=SurchargeCostItem.zero(),
             pm_kosten=pm_cost,
             algemene_kosten=general_cost,
             risico_en_winst=risk_profit,
-            indirecte_bouwkosten=indirecte_bouwkosten,
-            totale_bouwkosten_grondwerk=0.0,
-            totale_bouwkosten_constructie=total_costs,
-            totale_bouwkosten_infrastructuur=0.0,
-            totale_bouwkosten=total_costs,
         )
 
     def calc_construction_costs_groundwork(self, groundwork_cost: float) -> ConstructionCosts:
@@ -508,7 +541,8 @@ class CostCalculator:
         totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
 
         return StructureCosts(
-            totale_BDBK_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
+            totale_BDBK_constructie = CostItem(unit_cost=totale_directe_bouwkosten_per_meter, quantity=vaklengte, unit='m', dimension=f'{wandlengte} m')
+        )
     
 
     def calc_direct_cost_infrastructure(self, road_area: float, bike_path_area: float = 0) -> float:

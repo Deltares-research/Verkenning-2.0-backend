@@ -55,7 +55,7 @@ class DikeModel:
         
         total_direct_construction_cost_infrastructure = calculator.calc_construction_costs_infrastructure(infrastructure_cost=infrastructure_cost.totale_BDBK_infrastructuur)   
         total_direct_construction_cost_ground = calculator.calc_construction_costs_groundwork(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk)
-        total_direct_construction_cost_structure = calculator.calc_construction_costs_structure(structure_cost=structure_costs.totale_BDBK_constructie)
+        total_direct_construction_cost_structure = calculator.calc_construction_costs_structure(structure_cost=structure_costs.totale_BDBK_constructie.value)
 
         
 
