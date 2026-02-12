@@ -223,7 +223,6 @@ class EngineeringCosts:
     algemene_kosten: SurchargeCostItem  # Algemene kosten (projectmanagement, voorbereiding, e.d.)
     winst_en_risico: SurchargeCostItem  # Winst en risico (onvoorziene omstandigheden, faalkosten, e.d.)
 
-    # research_cost: float  # Onderzoeken (archeologie, explosieven, LNC, e.d.))
     @property
     def direct_engineering_cost(self) -> float:
         return self.engineering_opdrachtgever.value + self.engineering_opdrachtnemer.value + self.onderzoekskosten.value
