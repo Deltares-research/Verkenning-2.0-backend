@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import geopandas as gpd
 from shapely.geometry import shape
@@ -9,7 +11,8 @@ from app.dike_components.dike_model import DikeModel
 
 @pytest.fixture(scope="module")
 def dike_model():
-    gdf_ground = gpd.read_file('tests/test_data/test_berm__ontwerp_3d.geojson')
+    path = Path(__file__).parent.joinpath('test_data/test_berm__ontwerp_3d.geojson')
+    gdf_ground = gpd.read_file(path)
     model = DikeModel(_3d_ground_polygon=gdf_ground, complexity='makkelijke maatregel')
     model.ground_model.calculate_volume()
 

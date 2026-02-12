@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
 from app.dike_components.dike_model import DikeModel
 from app.dike_components.ground_model import GroundModel
@@ -15,11 +17,13 @@ def sum_values_from_cost_dict(cost_dict):
 @pytest.fixture(scope="module")
 def gdf_structure():
     #default output is Onverankerde damwand
-    return gpd.read_file('tests/test_data/test_damwand_input_lines_with_properties.geojson')
+    path = Path(__file__).parent.parent.joinpath('test_data/test_damwand_input_lines_with_properties.geojson')
+    return gpd.read_file(path)
 
 @pytest.fixture(scope="module")
 def gdf_ground():
-    return gpd.read_file('tests/test_data/test_berm__ontwerp_3d.geojson')
+    path = Path(__file__).parent.parent.joinpath('test_data/test_berm__ontwerp_3d.geojson')
+    return gpd.read_file(path)
 
 
 def test_dike_model_initialization_with_structure_and_ground(gdf_structure, gdf_ground):
