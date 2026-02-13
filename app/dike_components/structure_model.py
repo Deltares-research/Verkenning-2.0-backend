@@ -4,7 +4,6 @@ import geopandas as gpd
 
 from app.unit_costs_and_surcharges import load_kosten_catalogus
 from ..AHN_raster_API import AHN4_API
-from ..projection_transformation import transform_to_rd
 import numpy as np
 from app.cost_calculator import StructureCosts
 
