@@ -282,6 +282,7 @@ class GroundModel:
         fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
         cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
         return fill, cut
+    
     def get_envelope_volume_and_area(self, dV: np.ndarray) -> dict:
         fill = np.sum(np.maximum(dV, 0) * self.grid_size ** 2)
         cut = 0.0  # No excavation in envelope mode
@@ -442,10 +443,6 @@ class GroundModel:
             traceback.print_exc()
             return {'type': 'FeatureCollection', 'features': [], 'total_area_m2': 0.0, 'num_polygons': 0}
 
-        return {
-            'ruimtebeslag_2d_points': above_ground_points
-        }
-
     def calculate_total_3d_surface_area(self):
         """
         Calculate total 3D surface area assuming every polygon is planar.
@@ -472,69 +469,5 @@ class GroundModel:
         for idx, row in self.design_export_3d.iterrows():
             coords_3d = row.geometry.exterior.coords
             total_area += planar_polygon_area_3d(coords_3d)
-
-        return {'total_3d_area_m2': total_area}
-
-    def calculate_3d_surface_area_above_ahn(self, grid_size: float = None):
-        """
-        Calculate the 3D surface area of planar polygons only where the surface is above AHN.
-
-        :param ahn_raster_func: function that returns AHN elevation at (x, y)
-                                e.g., ahn_raster_func(x, y) -> float
-        :return: dict with total 3D area
-        """
-        print("\n=== 3D SURFACE AREA ABOVE AHN (PLANAR POLYGONS) ===")
-
-        def planar_polygon_area_3d(coords):
-            """Compute 3D area of a planar polygon using Newell's method"""
-            coords = np.array(coords)
-            n = len(coords)
-            Ax = Ay = Az = 0.0
-            for i in range(n):
-                x0, y0, z0 = coords[i]
-                x1, y1, z1 = coords[(i + 1) % n]
-                Ax += (y0 - y1) * (z0 + z1)
-                Ay += (z0 - z1) * (x0 + x1)
-                Az += (x0 - x1) * (y0 + y1)
-            return 0.5 * np.sqrt(Ax ** 2 + Ay ** 2 + Az ** 2)
-
-        total_area = 0.0
-
-        for idx, row in self.design_export_3d.iterrows():
-            coords_3d = np.array(row.geometry.exterior.coords)
-            # Get AHN elevation at each vertex
-            xy_coords = coords_3d[:, :2]
-            ahn_elevs = self.get_elevations(AHN4_API(resolution=1.0), row.geometry, xy_coords)
-            z_coords = coords_3d[:, 2]
-
-            # Case 1: Entire polygon is above AHN
-            if np.all(z_coords > ahn_elevs):
-                total_area += planar_polygon_area_3d(coords_3d)
-                continue
-
-            # Case 2: Some vertices below AHN -> clip polygon at AHN plane
-            clipped_coords = []
-            n = len(coords_3d)
-            for i in range(n):
-                curr = coords_3d[i]
-                next_pt = coords_3d[(i + 1) % n]
-                curr_z, next_z = curr[2], next_pt[2]
-                curr_ahn, next_ahn = ahn_elevs[i], ahn_elevs[(i + 1) % n]
-
-                curr_above = curr_z > curr_ahn
-                next_above = next_z > next_ahn
-
-                if curr_above:
-                    clipped_coords.append(curr.tolist())
-
-                # Edge crosses AHN plane -> compute intersection
-                if curr_above != next_above:
-                    # Linear interpolation to intersection point
-                    t = (next_ahn - curr_ahn) / ((next_z - next_ahn) - (curr_z - curr_ahn))
-                    intersection = curr + t * (next_pt - curr)
-                    clipped_coords.append(intersection.tolist())
-
-            if len(clipped_coords) >= 3:
-                total_area += planar_polygon_area_3d(clipped_coords)
 
         return {'total_3d_area_m2': total_area}
