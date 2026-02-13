@@ -566,69 +566,6 @@ class CostCalculator:
             risico_en_winst=risk_profit,
         )
 
-    def calc_construction_costs_structure(self, structure_cost: float) -> ConstructionCosts:
-        if self.complexity == EnumerationComplexity.EASY:
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost)
-        elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=structure_cost)
-        elif self.complexity == EnumerationComplexity.HARD:
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=structure_cost)
-        else:
-            raise ValueError(f"Unsupported complexity level: {self.complexity}")
-        directe_bouwkosten_constructie = structure_cost + directe_niet_benoemde_bouwkosten_constructie.value
-
-        pm_cost = SurchargeCostItem(code="Q-EKABKUKMAN", surcharge_percentage=self.surcharge_dict["Q-EKABKUKMAN"].price_percent, base_cost=directe_bouwkosten_constructie)
-        general_cost = SurchargeCostItem(code="Q-AK", surcharge_percentage=self.surcharge_dict["Q-AK"].price_percent, base_cost=directe_bouwkosten_constructie + pm_cost.value)  # Algemene kosten
-        risk_profit = SurchargeCostItem(code="Q-WR", surcharge_percentage=self.surcharge_dict["Q-WR"].price_percent, base_cost=directe_bouwkosten_constructie + pm_cost.value + general_cost.value)  # Winst & risico
-
-        indirecte_bouwkosten = pm_cost.value + general_cost.value + risk_profit.value
-        total_costs = directe_bouwkosten_constructie + indirecte_bouwkosten
-
-        return ConstructionCosts(
-            totale_BDBK_grondwerk=0.0,
-            totale_BDBK_constructie=structure_cost,
-            totale_BDBK_infrastructuur=0.0,
-            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem.zero(),
-            directe_niet_benoemde_bouwkosten_constructie=directe_niet_benoemde_bouwkosten_constructie,
-            directe_niet_benoemde_bouwkosten_infrastructuur=SurchargeCostItem.zero(),
-            pm_kosten=pm_cost,
-            algemene_kosten=general_cost,
-            risico_en_winst=risk_profit,
-        )
-
-    def calc_construction_costs_groundwork(self, groundwork_cost: float) -> ConstructionCosts:
-        if self.complexity == EnumerationComplexity.EASY:
-            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMAKNTD'].price_percent / 100)
-        elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGGEMNTD'].price_percent / 100)
-        elif self.complexity == EnumerationComplexity.HARD:
-            directe_bouwkosten_grond = groundwork_cost * (1 + self.surcharge_dict['Q-GGMOENTD'].price_percent / 100)
-        else:
-            raise ValueError(f"Unsupported complexity level: {self.complexity}")
-
-        pm_cost = directe_bouwkosten_grond * self.surcharge_dict["Q-EKABKUKMAN"].price_percent / 100.0# Project management etc.
-        general_cost = (directe_bouwkosten_grond + pm_cost) * self.surcharge_dict["Q-AK"].price_percent / 100.0  # Algemene kosten
-        risk_profit = (directe_bouwkosten_grond + pm_cost + general_cost) * self.surcharge_dict["Q-WR"].price_percent / 100.0  # Winst & risico
-
-        indirecte_bouwkosten = pm_cost + general_cost + risk_profit
-        total_costs = directe_bouwkosten_grond + indirecte_bouwkosten
-
-        return ConstructionCosts(
-            totale_BDBK_grondwerk=groundwork_cost,
-            totale_BDBK_infrastructuur=0.0,
-            totale_BDBK_constructie=0.0,
-            totale_directe_bouwkosten=directe_bouwkosten_grond,
-            pm_kosten=pm_cost,
-            algemene_kosten=general_cost,
-            risico_en_winst=risk_profit,
-            indirecte_bouwkosten=indirecte_bouwkosten,
-            totale_bouwkosten_grondwerk=total_costs,
-            totale_bouwkosten_constructie=0.0,
-            totale_bouwkosten_infrastructuur=0.0,
-            totale_bouwkosten=total_costs,
-        )
-
-
     def calc_all_engineering_costs(self, construction_cost: float) -> EngineeringCosts:
         """
 

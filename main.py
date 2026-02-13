@@ -147,27 +147,7 @@ async def calculate_designs(
         print(f"DEBUG: Result value: {result}")
         
         # If result is None, extract from ground_model attributes
-        if result is None:
-            print("DEBUG: Result is None, extracting from model attributes")
-            fill_vol = getattr(ground_model, 'total_fill_volume', 0.0)
-            cut_vol = getattr(ground_model, 'total_cut_volume', 0.0)
-            total_vol = fill_vol - cut_vol
-            area = getattr(ground_model, 'total_area', 0.0)
-            grid_pts = getattr(ground_model, 'grid_points_count', None)
-            print(f"DEBUG: Extracted - fill: {fill_vol}, cut: {cut_vol}, total: {total_vol}")
-        # Handle both tuple and dict return types
-        elif isinstance(result, tuple):
-            print(f"DEBUG: Result is tuple with length {len(result)}")
-            if len(result) >= 3:
-                fill_vol = result[0] if len(result) > 0 else 0.0
-                cut_vol = result[1] if len(result) > 1 else 0.0
-                total_vol = result[2] if len(result) > 2 else 0.0
-                area = result[3] if len(result) > 3 else 0.0
-                grid_pts = result[4] if len(result) > 4 else None
-            else:
-                fill_vol = cut_vol = total_vol = area = 0.0
-                grid_pts = None
-        elif isinstance(result, dict):
+        if isinstance(result, dict):
             print(f"DEBUG: Result is dict: {result}")
             fill_vol = result.get('fill_volume', 0.0)
             cut_vol = result.get('cut_volume', 0.0)
@@ -212,34 +192,6 @@ async def calculate_designs(
             status_code=500, 
             detail=f"Error calculating designs: {str(e.detail) if hasattr(e, 'detail') else str(e)}"
         )
-
-# Debug endpoint to see raw calculation result
-@app.post("/api/debug_calculate_volume")
-async def debug_calculate_volume(
-    geojson: GeoJSONInput,
-    api_key: str = Depends(verify_api_key)
-):
-    """Debug endpoint to see raw calculation result"""
-    try:
-        features = []
-        for feature in geojson.features:
-            geom = shape(feature.geometry)
-            features.append({'geometry': geom, **feature.properties})
-        
-        gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
-        dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume()
-        
-        return {
-            "result_type": str(type(result)),
-            "result": str(result),
-            "is_tuple": isinstance(result, tuple),
-            "is_dict": isinstance(result, dict),
-            "length": len(result) if isinstance(result, (tuple, list)) else None
-        }
-    except Exception as e:
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @app.post("/api/cost_calculation", response_model=DesignCostResult)

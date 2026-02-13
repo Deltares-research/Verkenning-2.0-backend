@@ -112,36 +112,16 @@ class AHN4_API:
 
         content = output.read()
 
-        if RASTERIO_AVAILABLE:
-            try:
-                with MemoryFile(content) as mem:
-                    with mem.open() as src:
-                        data = src.read(1)
-                        transform = src.transform
-                        # replace large invalid values with NaN
-                        data = data.astype('float32')
-                        data[data > 9_000] = np.nan
-            except Exception:
-                warnings.warn('rasterio failed to read GeoTIFF, falling back to PIL')
-                RASTERIO_FALLBACK = True
-                RASTERIO_FALLBACK
-        else:
-            RASTERIO_FALLBACK = True
-
-        if not RASTERIO_AVAILABLE or 'RASTERIO_FALLBACK' in locals():
-            # Fallback using PIL -- slower and lossy for float data
-            im = Image.open(BytesIO(content))
-            data = np.array(im)
-            data = data.astype('float32')
-            data[data > 9_000] = np.nan
-
-            # Build a transform: assume data.shape maps to bbox with top-left origin
-            x0, y0, x1, y1 = bbox
-            height, width = data.shape
-            resx = (x1 - x0) / float(width)
-            resy = (y1 - y0) / float(height)
-            # Affine(c, a, b, f, d, e) but rasterio uses Affine(resx, 0, x0, 0, -resy, y1)
-            transform = Affine(resx, 0.0, x0, 0.0, -resy, y1)
+        try:
+            with MemoryFile(content) as mem:
+                with mem.open() as src:
+                    data = src.read(1)
+                    transform = src.transform
+                    # replace large invalid values with NaN
+                    data = data.astype('float32')
+                    data[data > 9_000] = np.nan
+        except Exception as e:
+            raise RuntimeError('Failed to read GeoTIFF with rasterio. Exception: ' + str(e))
 
         # Store in cache and return
         self._cache[key] = (data, transform)
