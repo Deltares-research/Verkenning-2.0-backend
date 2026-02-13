@@ -17,10 +17,18 @@ from ..utils import reproject_polygon_with_z
 
 
 class GroundModel:
-    def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525):
+    def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525, excavation_mode = 'envelope'):
+        '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
+        two excavation modes are supported:
+        - envelope: the design surface is treated as an envelope. All cells where soil is below the design surface will be supplemented. All cells where soil is above the design surface will be left as is. This is the default method and is preferable for typical soil reinforcements in order to avoid removing all on and off ramps to the dike.
+        - cut_and_fill: separate cut and fill volumes are calculated based on the actual difference between the design surface and the AHN surface. In the end the profile will be equal to the design surface on all locations. This approach is more suitable for dike reconstructions where the entire dike profile is removed and rebuilt, such as in a realignment. This options is available but not provided to users at the moment.
+        '''
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.design_export_3d = design_export_3d
         self.design_export_3d["geometry"] = self.design_export_3d["geometry"].apply(reproject_polygon_with_z)
+        if not excavation_mode in ['envelope', 'cut_and_fill']:
+            raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
+        self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -208,7 +216,7 @@ class GroundModel:
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
-            return {'fill_volume': 0.0, 'cut_volume': 0.0, 'total_volume': 0.0, 'area': 0.0, 'grid_points': 0}
+            return {'fill_volume': 0.0, 'cut_volume': 0.0, 'net_volume': 0.0, 'area': 0.0, 'grid_points': 0}
 
         # 4) Precompute masks for each polygon
         masks = []
@@ -254,20 +262,31 @@ class GroundModel:
 
             # Compute volume with interpolated heights
             dV = design_heights_valid - elev_poly_valid
-            fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
-            cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
-
+            if self.excavation_mode == 'cut_and_fill':
+                fill, cut = self.cut_and_fill_volume_and_area(dV)
+            elif self.excavation_mode == 'envelope':
+                fill, cut = self.get_envelope_volume_and_area(dV)
+            else:
+                raise ValueError(f"Invalid excavation mode: {self.excavation_mode}")
             tot_volume_fill += fill
             tot_volume_cut += cut
 
         return {
             'fill_volume': tot_volume_fill,
             'cut_volume': tot_volume_cut,
-            'total_volume': tot_volume_fill - tot_volume_cut,
+            'net_volume': tot_volume_fill - tot_volume_cut,
             'area': len(grid_pts_global) * (self.grid_size ** 2),
             'grid_points': len(grid_pts_global)
         }
-
+    def cut_and_fill_volume_and_area(self, dV: np.ndarray) -> dict:
+        fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
+        cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
+        return fill, cut
+    def get_envelope_volume_and_area(self, dV: np.ndarray) -> dict:
+        fill = np.sum(np.maximum(dV, 0) * self.grid_size ** 2)
+        cut = 0.0  # No excavation in envelope mode
+        return fill, cut
+    
     def calculate_ruimtebeslag_2d(self, alpha: float = 5.0):
         """
         Calculate the 2D ruimtebeslag (footprint area) where design is above ground.

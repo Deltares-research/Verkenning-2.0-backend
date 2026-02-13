@@ -133,13 +133,13 @@ def test_volume_calculation():
             print(f"{'='*70}")
             print(f"\n  Fill Volume:       {result.get('fill_volume', 0):>10.2f} m³")
             print(f"  Excavation Volume: {result.get('excavation_volume', 0):>10.2f} m³")
-            print(f"  Total Volume:      {result.get('total_volume', 0):>10.2f} m³")
+            print(f"  Net Volume:      {result.get('net_volume', 0):>10.2f} m³")
             print(f"  Grid Area:         {result.get('area', 0):>10.2f} m²")
             print(f"  Grid Points:       {result.get('grid_points', 0):>10}")
             print(f"  Calculation Time:  {result.get('calculation_time', 0):>10.3f}s")
             
             expected = 4070
-            total_vol = result.get('total_volume', 0)
+            total_vol = result.get('net_volume', 0)
             diff = abs(total_vol - expected)
             diff_pct = (diff / expected) * 100 if expected > 0 else 0
             

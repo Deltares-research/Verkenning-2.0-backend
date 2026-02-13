@@ -63,7 +63,7 @@ class GeoJSONInput(BaseModel):
     crs: Optional[Dict[str, Any]] = None
 
 class VolumeCalculationResult(BaseModel):
-    total_volume: float
+    net_volume: float
     excavation_volume: float
     fill_volume: float
     area: float
@@ -88,6 +88,10 @@ class DesignCalculationResult(BaseModel):
 class DesignCostResult(BaseModel):
     breakdown: dict  # Please dont change type, Pydantic is being very annoying
 
+class VolumeCalculationRequest(BaseModel):
+    geojson: GeoJSONInput
+    excavation_mode: str = 'envelope'  # or 'cut_and_fill'
+
 class CostCalculationRequest(BaseModel):
     geojson_dike: GeoJSONInput | None = None
     geojson_structure: GeoJSONInput | None = None
@@ -98,7 +102,7 @@ class CostCalculationRequest(BaseModel):
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
 async def calculate_designs(
-    geojson: GeoJSONInput,
+    request: VolumeCalculationRequest,
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -111,12 +115,12 @@ async def calculate_designs(
     start_time = time.time()
     
     try:
-        if not geojson.features:
+        if not request.geojson.features:
             raise HTTPException(status_code=400, detail="No features provided in GeoJSON")
         
         # Convert GeoJSON to GeoDataFrame
         features = []
-        for feature in geojson.features:
+        for feature in request.geojson.features:
             geom = shape(feature.geometry)
             features.append({
                 'geometry': geom,
@@ -133,7 +137,7 @@ async def calculate_designs(
             )
         
         # Initialize GroundModel with the GeoDataFrame
-        ground_model = GroundModel(gdf)
+        ground_model = GroundModel(gdf, excavation_mode=request.excavation_mode)
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
@@ -167,7 +171,7 @@ async def calculate_designs(
             print(f"DEBUG: Result is dict: {result}")
             fill_vol = result.get('fill_volume', 0.0)
             cut_vol = result.get('cut_volume', 0.0)
-            total_vol = result.get('total_volume', 0.0)
+            total_vol = result.get('net_volume', 0.0)
             area = result.get('area', 0.0)
             grid_pts = result.get('grid_points', None)
         else:
@@ -183,7 +187,7 @@ async def calculate_designs(
         
         # Build volume calculation result
         volume_calc = VolumeCalculationResult(
-            total_volume=round(total_vol, 2),
+            net_volume=round(total_vol, 2),
             excavation_volume=round(cut_vol, 2),
             fill_volume=round(fill_vol, 2),
             area=round(area, 2),

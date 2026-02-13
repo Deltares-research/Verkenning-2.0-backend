@@ -123,12 +123,12 @@ def main():
         print(f"{'='*70}")
         print(f"\n  Fill Volume:       {result['fill_volume']:>10.2f} m³")
         print(f"  Excavation Volume: {result['cut_volume']:>10.2f} m³")
-        print(f"  Total Volume:      {result['total_volume']:>10.2f} m³")
+        print(f"  Net Volume:      {result['net_volume']:>10.2f} m³")
         print(f"  Grid Area:         {result['area']:>10.2f} m²")
         print(f"  Grid Points:       {result['grid_points']:>10}")
         
         expected = 4070
-        total_vol = result['total_volume']
+        total_vol = result['net_volume']
         diff = abs(total_vol - expected)
         diff_pct = (diff / expected) * 100 if expected > 0 else 0
         

@@ -490,8 +490,8 @@ class CostCalculator:
         V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
-        S0 = volumes['S0']  # surface area beyond the toe of the old dike
-        S5 = volumes['S5']  # surface area beyond the toe of the old dike
+        S0 = volumes['S0']  # surface area on the old dike that needs to be cleared and mowed 
+        S5 = volumes['S5']  # surface area beyond the toe of the old dike. 
 
 
         
