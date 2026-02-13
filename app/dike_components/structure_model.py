@@ -71,14 +71,6 @@ class StructureModel:
             self.wandlengte = max(0, top_level - self.depth)
         else:
             raise ValueError("Niet geimplementeerd voor andere types dan 'mean'.")
-
-    def compute_benoemde_directe_bouwkosten(self, c, d, z) -> float:
-        vaklengte = self.length
-        wandlengte = self.wandlengte
-        totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
-        
-        return StructureCosts(directe_kosten_constructie = totale_directe_bouwkosten_per_meter * vaklengte)
-
     
     def set_cost_function_parameters(self) -> float:
         """Compute the total cost of the structure based on its properties."""
