@@ -496,8 +496,8 @@ class CostCalculator:
 
         
         ### Combine to get costs
-        kosten_opruimen             = self.build_cost_item(S0, 'Q-AW010', 'm2') # opruimen terrein
-        kosten_maaien               = self.build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
+        kosten_opruimen             = self.build_cost_item(S0+S5, 'Q-AW010', 'm2') # opruimen terrein
+        kosten_maaien               = self.build_cost_item(S0+S5, 'Q-AW020', 'm2')  # maaien terrein
         afgraven_toplaag            = self.build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
         afgraven_oud_materiaal      = self.build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!
         hergebruik_oud_materiaal    = self.build_cost_item(V2b, 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern #TODO CHECK!
@@ -712,9 +712,9 @@ class CostCalculator:
             return risk_total
 
         elif self.complexity == EnumerationComplexity.HARD:
-            risk_grond = self.build_surcharge_cost_item(base_cost=investering_grond, surcharge_code='Q-GGMOONV')
-            risk_constructie = self.build_surcharge_cost_item(base_cost=investering_constructie, surcharge_code='Q-GCMOONV')
-            risk_infra = self.build_surcharge_cost_item(base_cost=investering_infra, surcharge_code='Q-GCMOONV')
+            risk_grond = self.build_surcharge_cost_item(base_cost=investering_grond, surcharge_code='Q-GGMOEONV')
+            risk_constructie = self.build_surcharge_cost_item(base_cost=investering_constructie, surcharge_code='Q-GCMOEONV')
+            risk_infra = self.build_surcharge_cost_item(base_cost=investering_infra, surcharge_code='Q-GCMOEONV')
             risk_total = risk_grond.__add__(risk_constructie).__add__(risk_infra)
             risk_total.description = "Objectoverstijgende risicoreservering (moeilijk)"
             return risk_total

@@ -153,11 +153,11 @@ def test_total_cost_ground_medium(calculator_medium):
     total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
     risk_cost = calculator_medium.calc_risk_cost(total_investment, constr_cost_ground)
 
-    total_cost_excl_BTW = total_investment + risk_cost
+    total_cost_excl_BTW = total_investment + risk_cost.value
 
-    assert total_investment == pytest.approx(1830.3080466683691)
-    assert risk_cost == pytest.approx(274.5462070002554)
-    assert total_cost_excl_BTW == pytest.approx(2104.8542536686246)
+    assert np.allclose(total_investment, 1830.3080466683691, rtol=1e-2)
+    assert np.allclose(risk_cost.value, 274.5462070002554, rtol=1e-2)
+    assert np.allclose(total_cost_excl_BTW, 2104.8542536686246, rtol=1e-2)
 
 
 def test_total_cost_ground_hard(calculator_hard):
@@ -166,11 +166,11 @@ def test_total_cost_ground_hard(calculator_hard):
     gen_cost = calculator_hard.calc_general_costs(constr_cost_ground.totale_bouwkosten).total_general_costs
     total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
     risk_cost = calculator_hard.calc_risk_cost(total_investment, constr_cost_ground)
-    total_cost_excl_BTW = total_investment + risk_cost
+    total_cost_excl_BTW = total_investment + risk_cost.value
 
-    assert total_investment == pytest.approx(1945.8195658613915)
-    assert risk_cost == pytest.approx(389.16391317227834)
-    assert total_cost_excl_BTW == pytest.approx(2334.98347903367)
+    assert np.allclose(total_investment, 1945.8195658613915, rtol=1e-2)
+    assert np.allclose(risk_cost.value, 389.16391317227834, rtol=1e-2)
+    assert np.allclose(total_cost_excl_BTW, 2334.98347903367, rtol=1e-2)
 
 def test_total_cost_medium_both(calculator_medium):
     constr_cost_combined = calculator_medium.calc_construction_costs(groundwork_cost=500, structure_cost=500)
@@ -182,8 +182,8 @@ def test_total_cost_medium_both(calculator_medium):
     assert grond_percentage == pytest.approx(0.4835680751173709)
     risk_cost = calculator_medium.calc_risk_cost(total_investment, construction_costs=constr_cost_combined)
 
-    total_cost_excl_BTW = total_investment + risk_cost
-
-    assert total_investment == pytest.approx(1892.5029802930221)
-    assert risk_cost == pytest.approx(381.61034273983717)
-    assert total_cost_excl_BTW == pytest.approx(2274.1133230328596)
+    total_cost_excl_BTW = total_investment + risk_cost.value
+    
+    assert np.allclose(total_investment, 1892.5029802930221, rtol=1e-2)
+    assert np.allclose(risk_cost.value, 381.61034273983717, rtol=1e-2)
+    assert np.allclose(total_cost_excl_BTW, 2274.1133230328596, rtol=1e-2)

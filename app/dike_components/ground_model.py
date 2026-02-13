@@ -111,7 +111,9 @@ class GroundModel:
         Assumption is made to determine where the toe location of the old dike is located.
         The volume V1b and V2b are calculated based on the surface area of the current AHN surface, times the thickness of each layers.
         """
-        RATIO_TOE_DIKE_TO_EXTENT = 0.3  # It is difficult to locate the toe lijn automatically. The workaround is to assume that the old toe dike is approximately at 30% of the new dike extent.
+        # It is difficult to locate the toe lijn automatically. We now assume that the surface covers the entire area of the polygon. 
+        # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
+        RATIO_TOE_DIKE_TO_EXTENT = 1.0  
         combined_poly = unary_union(design_3d_surface)
 
         grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
