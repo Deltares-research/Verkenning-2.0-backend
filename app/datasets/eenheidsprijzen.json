@@ -182,5 +182,13 @@
       "eenheid": "m²",
       "prijs": 6.84
     }
+  ],
+  "Vastgoed": [
+    {
+      "code": "Q-VASTGOED",
+      "omschrijving": "Kosten per object",
+      "eenheid": "",
+      "prijs": 700000.0
+    }
   ]
 }

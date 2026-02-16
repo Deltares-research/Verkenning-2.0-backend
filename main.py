@@ -1,12 +1,14 @@
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import geopandas as gpd
 from shapely.geometry import shape
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 from app.dike_components.dike_model import DikeModel
@@ -305,6 +307,51 @@ async def get_designs():
 async def create_design(design: dict):
     """Create a new design"""
     return {"message": "Design created", "design": design}
+
+
+@app.get("/api/datasets")
+async def list_datasets(api_key: str = Depends(verify_api_key)):
+    """List available CSV files in app/datasets directory"""
+    try:
+        datasets_path = Path("app/datasets")
+        
+        if not datasets_path.exists():
+            raise HTTPException(status_code=404, detail="Datasets directory not found")
+        
+        # Get all CSV files
+        csv_files = [f.name for f in datasets_path.glob("*.csv")]
+        
+        return {
+            "datasets": csv_files,
+            "count": len(csv_files)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error listing datasets: {str(e)}")
+
+
+@app.get("/api/datasets/{filename}")
+async def download_dataset(filename: str, api_key: str = Depends(verify_api_key)):
+    """Download a specific CSV file from app/datasets directory"""
+    try:
+        # Security: only allow CSV files and prevent directory traversal
+        if not filename.endswith(".csv") or ".." in filename or "/" in filename or "\\" in filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        
+        file_path = Path("app/datasets") / filename
+        
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=404, detail=f"File '{filename}' not found")
+        
+        return FileResponse(
+            path=str(file_path),
+            media_type="text/csv",
+            filename=filename
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
