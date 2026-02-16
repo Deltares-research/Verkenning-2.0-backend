@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import geopandas as gpd
 
 from app.unit_costs_and_surcharges import load_kosten_catalogus
@@ -38,7 +40,9 @@ class StructureModel:
         
         self.get_screen_length()
 
-        self.cost_catalog = load_kosten_catalogus()
+        path_cost = Path(__file__).parent.parent.joinpath("datasets/eenheidsprijzen.json")
+        path_opslag_factor = Path(__file__).parent.parent.joinpath("datasets/opslagfactoren.json")
+        self.cost_catalog = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
 
         self.set_cost_function_parameters()
     

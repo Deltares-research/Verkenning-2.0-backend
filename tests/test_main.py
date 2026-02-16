@@ -143,8 +143,8 @@ def test_cost_calculation_for_ground_design(gdf_ground):
         "geojson_dike": geojson_data,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 106517.25, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 21000.01, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 132827.18, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 26433.92, rtol=1e-2)
 
 def test_cost_calculation_for_ground_and_structure(gdf_ground, gdf_structure):
     payload = {
@@ -152,16 +152,28 @@ def test_cost_calculation_for_ground_and_structure(gdf_ground, gdf_structure):
         "geojson_structure": gdf_structure.__geo_interface__,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_grondwerk'], 76489.88, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 726978.02, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 224874.34, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_grondwerk'], 95383.00, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 754540.17, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 230308.25, rtol=1e-2)
 
 def test_cost_calculation_for_structure_only(gdf_structure):
     payload = {
         "geojson_structure": gdf_structure.__geo_interface__,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Indirecte bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering'], 203874.33, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 203874.33, rtol=1e-2)
+
+def test_cost_calculation_for_combination_of_all(gdf_ground, gdf_structure):
+    payload = {
+        "geojson_dike": gdf_ground.__geo_interface__,
+        "geojson_structure": gdf_structure.__geo_interface__,
+        "number_houses": 10,
+        "road_surface": 1000.0}
+    response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 200
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 858332.35, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 264412.84, rtol=1e-2)

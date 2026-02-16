@@ -98,7 +98,7 @@
       "percentage": 20.0
     }
   ],
-  "Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructieve versterkingen": [
+  "Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Constructief & Infra": [
     {
       "code": "Q-GCMAKNTD",
       "omschrijving": "GC - makkelijk: Nader te detailleren directe bouwkosten",
@@ -127,6 +127,53 @@
     {
       "code": "Q-GCMOEONV",
       "omschrijving": "GC - moeilijk: Objectoverstijgende risicoreservering",
+      "percentage": 30.0
+    }
+  ],
+  "Percentages ter bepaling Opslagfactor investeringskosten / directe vastgoedkosten": [
+    {
+      "code": "Q-GVMAKNTD",
+      "omschrijving": "GV - makkelijk: Nader te detailleren directe bouwkosten",
+      "percentage": 5.0
+    },
+    {
+      "code": "Q-GVMAKIND",
+      "omschrijving": "GV - makkelijk: Indirecte vastgoedkosten",
+      "percentage": 7.0
+    },
+    {
+      "code": "Q-GVMAKNBO",
+      "omschrijving": "GV - makkelijk: Niet benoemd objectrisico vastgoed",
+      "percentage": 15.0
+    },
+    {
+      "code": "Q-GVGEMNTD",
+      "omschrijving": "GV - gemiddeld: Nader te detailleren directe bouwkosten",
+      "percentage": 7.0
+    },
+    {
+      "code": "Q-GVGEMIND",
+      "omschrijving": "GV - gemiddeld: Indirecte vastgoedkosten",
+      "percentage": 10.0
+    },
+    {
+      "code": "Q-GVGEMNBO",
+      "omschrijving": "GV - gemiddeld: Niet benoemd objectrisico vastgoed",
+      "percentage": 20.0
+    },
+    {
+      "code": "Q-GVMOENTD",
+      "omschrijving": "GV - moeilijk: Nader te detailleren directe bouwkosten",
+      "percentage": 10.0
+    },
+    {
+      "code": "Q-GVMOEIND",
+      "omschrijving": "GV - moeilijk: Indirecte vastgoedkosten",
+      "percentage": 15.0
+    },
+    {
+      "code": "Q-GVMOENBO",
+      "omschrijving": "GV - moeilijk: Niet benoemd objectrisico vastgoed",
       "percentage": 30.0
     }
   ]
