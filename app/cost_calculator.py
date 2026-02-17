@@ -664,7 +664,7 @@ class CostCalculator:
         c = cost_function_parameters['c']
         d = cost_function_parameters['d']
         z = cost_function_parameters['z']
-        totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z
+        totale_directe_bouwkosten_per_meter = c *  wandlengte ** 2 + d * wandlengte + z if wandlengte > 0 else 0.0
         directe_bouwkosten = CostItem(unit_cost=totale_directe_bouwkosten_per_meter, quantity=vaklengte, unit='m', description=structure_type,dimension=f'{wandlengte:.1f} m wandlengte')
         return StructureCosts(
             directe_bouwkosten = directe_bouwkosten,
