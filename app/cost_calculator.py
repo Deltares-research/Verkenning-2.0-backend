@@ -16,17 +16,45 @@ class UnitPriceItem:
     price: float  # renamed from prijs to make it clear it's a percentage
     description: str
 
+@dataclass
+class SummedCostItem:
+    '''Item for summing unit prices and/or surcharges together with and without BTW'''
+    description: str
+    value_excl_BTW: float
+    value_incl_BTW: float
+
+    def __add__(self, other: Self) -> Self:
+        return SummedCostItem(description=self.description, value_excl_BTW=self.value_excl_BTW + other.value_excl_BTW, value_incl_BTW=self.value_incl_BTW + other.value_incl_BTW)
+    
+    def to_dict(self) -> dict:
+        """Serialize the dataclass to a dict"""
+        data = {
+            'description': self.description,
+            'value_excl_BTW': self.value_excl_BTW,
+            'value_incl_BTW': self.value_incl_BTW
+        }
+        return data
+    
 #dataclasses for computed costs.
 @dataclass
 class SurchargeCostItem:
     code: str
     surcharge_percentage: float #original percentage from the catalog
-    base_cost: float
+    base_cost: float    #Base cost on which the surcharge is applied. This should be without BTW
     description: str = '' #Optional human readable name for the cost item, e.g. "Algemene kosten"
+    BTW: bool = True #Whether the cost item is subject to VAT (BTW in Dutch).
+    BTW_percentage: float = 21.0 #The percentage of VAT to apply if BTW is True. Default is 21%, which is the standard VAT rate in the Netherlands.
 
     @property
     def value(self) -> float:
         return self.base_cost * self.surcharge_percentage / 100.0
+    
+    @property
+    def value_incl_BTW(self) -> float:
+        if self.BTW:
+            return self.value * (1 + self.BTW_percentage / 100.0)
+        else:
+            return self.value
     
     @classmethod
     def zero(cls) -> "SurchargeCostItem":
@@ -39,10 +67,17 @@ class SurchargeCostItem:
             new_surcharge_percentage = (self.value + other.value) / total_base_cost * 100.0
         else:
             new_surcharge_percentage = 0.0
+
+        #recompute averaged BTW percentage
+        BTW_1  = self.value_incl_BTW - self.value
+        BTW_2 = other.value_incl_BTW - other.value
+        if total_base_cost > 0:
+            new_BTW_percentage = (BTW_1 + BTW_2) / (total_base_cost * new_surcharge_percentage / 100.0) * 100.0
         return SurchargeCostItem(
             code='',
             surcharge_percentage=new_surcharge_percentage,
-            base_cost=total_base_cost
+            base_cost=total_base_cost,
+            BTW_percentage=new_BTW_percentage,
         )
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -63,6 +98,8 @@ class CostItem:
     unit: str
     dimension: str = None #Optional for e.g. sheetpile length
     description: str = '' #Optional human readable description of the cost item, e.g. "Kosten voor het aanbrengen van een nieuwe kleilaag"
+    BTW: str = True #Whether the cost item is subject to VAT (BTW in Dutch). 
+    BTW_percentage: float = 21.0 #The percentage of VAT to apply if BTW is True. Default is 21%, which is the standard VAT rate in the Netherlands.
 
     @property
     def value(self) -> float:
@@ -71,8 +108,15 @@ class CostItem:
         else:
             return 0
 
+    @property 
+    def value_incl_BTW(self) -> float:
+        if self.BTW:
+            return self.value * (1 + self.BTW_percentage / 100.0)
+        else:
+            return self.value
+        
     def to_dict(self) -> dict:
-        return {"value": self.value, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit, "description": self.description, "dimension": self.dimension}
+        return {"value": self.value, "value_incl_BTW": self.value_incl_BTW, "unit_cost": self.unit_cost, "quantity": self.quantity, 'unit': self.unit, "description": self.description, "dimension": self.dimension}
 
 
 
@@ -94,9 +138,9 @@ class DirectCostGroundWork:
 
 
     @property
-    def totale_BDBK_grondwerk(self) -> float:
+    def totale_BDBK_grondwerk(self) -> SummedCostItem:
         """Benoemde Directe BouwKosten (BDBK)"""
-        return (
+        total_excl_BTW = (
             self.kosten_opruimen.value +
             self.kosten_maaien.value +
             self.afgraven_toplaag.value +
@@ -111,6 +155,23 @@ class DirectCostGroundWork:
             self.profileren_nieuwe_toplaag.value +
             self.inzaaien_nieuwe_toplaag.value
         )
+        total_incl_BTW = (
+            self. kosten_opruimen.value_incl_BTW +
+            self.kosten_maaien.value_incl_BTW +
+            self.afgraven_toplaag.value_incl_BTW +
+            self.afgraven_oud_materiaal.value_incl_BTW +
+            self.hergebruik_oud_materiaal.value_incl_BTW +
+            self.aanvullen_kern.value_incl_BTW +
+            self.profileren_dijkkern.value_incl_BTW +
+            self.aanbrengen_nieuwe_kleilaag.value_incl_BTW +
+            self.profileren_nieuwe_kleilaag.value_incl_BTW +
+            self.hergebruik_toplaag.value_incl_BTW +
+            self.aanvullen_toplaag.value_incl_BTW +
+            self.profileren_nieuwe_toplaag.value_incl_BTW +
+            self.inzaaien_nieuwe_toplaag.value_incl_BTW
+        )
+
+        return SummedCostItem(description="Benoemde directe bouwkosten grondwerk", value_excl_BTW=total_excl_BTW, value_incl_BTW=total_incl_BTW)
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -128,7 +189,7 @@ class DirectCostGroundWork:
             'aanvullen_toplaag': self.aanvullen_toplaag.to_dict(),
             'profileren_nieuwe_toplaag': self.profileren_nieuwe_toplaag.to_dict(),
             'inzaaien_nieuwe_toplaag': self.inzaaien_nieuwe_toplaag.to_dict(),
-            'totale_BDBK_grondwerk': self.totale_BDBK_grondwerk
+            'totale_BDBK_grondwerk': self.totale_BDBK_grondwerk.to_dict()
         }
         return data
 
@@ -142,9 +203,9 @@ class DirectCostGroundWork:
 @dataclass
 class ConstructionCosts:
     #input values
-    totale_BDBK_grondwerk: float  # Benoemde Directe BouwKosten (BDBK) (deel grond)
-    totale_BDBK_constructie: float # Benoemde Directe BouwKosten (BDBK) (deel constructies)
-    totale_BDBK_infrastructuur: float # Benoemde Directe BouwKosten (BDBK) (deel infrastructuur)
+    totale_BDBK_grondwerk: SummedCostItem  # Benoemde Directe BouwKosten (BDBK) (deel grond)
+    totale_BDBK_constructie: SummedCostItem # Benoemde Directe BouwKosten (BDBK) (deel constructies)
+    totale_BDBK_infrastructuur: SummedCostItem # Benoemde Directe BouwKosten (BDBK) (deel infrastructuur)
 
     #computed values
     directe_niet_benoemde_bouwkosten_grondwerk: SurchargeCostItem
@@ -155,40 +216,42 @@ class ConstructionCosts:
     risico_en_winst: SurchargeCostItem
 
     @property
-    def totale_directe_bouwkosten(self) -> float:
-        return self.totale_BDBK_grondwerk + self.totale_BDBK_constructie + self.totale_BDBK_infrastructuur + self.directe_niet_benoemde_bouwkosten_grondwerk.value + self.directe_niet_benoemde_bouwkosten_constructie.value + self.directe_niet_benoemde_bouwkosten_infrastructuur.value
+    def totale_directe_bouwkosten(self) -> SummedCostItem:
+        return SummedCostItem(description = 'Totale directe bouwkosten', value_excl_BTW=
+                              self.totale_BDBK_grondwerk.value_excl_BTW + self.totale_BDBK_constructie.value_excl_BTW + self.totale_BDBK_infrastructuur.value_excl_BTW + self.directe_niet_benoemde_bouwkosten_grondwerk.value + self.directe_niet_benoemde_bouwkosten_constructie.value + self.directe_niet_benoemde_bouwkosten_infrastructuur.value, value_incl_BTW=
+                              self.totale_BDBK_grondwerk.value_incl_BTW + self.totale_BDBK_constructie.value_incl_BTW + self.totale_BDBK_infrastructuur.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_grondwerk.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_constructie.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_infrastructuur.value_incl_BTW)
     @property
-    def indirecte_bouwkosten(self) -> float:
-        return self.pm_kosten.value + self.algemene_kosten.value + self.risico_en_winst.value
+    def indirecte_bouwkosten(self) -> SummedCostItem:
+        return SummedCostItem(description='Indirecte bouwkosten', value_excl_BTW=self.pm_kosten.value + self.algemene_kosten.value + self.risico_en_winst.value, value_incl_BTW=self.pm_kosten.value_incl_BTW + self.algemene_kosten.value_incl_BTW + self.risico_en_winst.value_incl_BTW)
     @property
-    def totale_bouwkosten(self) -> float:
-        return self.totale_directe_bouwkosten + self.indirecte_bouwkosten
+    def totale_bouwkosten(self) -> SummedCostItem:
+        return SummedCostItem(description='Totale bouwkosten', value_excl_BTW=self.totale_directe_bouwkosten.value_excl_BTW + self.indirecte_bouwkosten.value_excl_BTW, value_incl_BTW=self.totale_directe_bouwkosten.value_incl_BTW + self.indirecte_bouwkosten.value_incl_BTW)
     @property
-    def totale_directe_bouwkosten_grondwerk(self) -> float:
-        return self.totale_BDBK_grondwerk + self.directe_niet_benoemde_bouwkosten_grondwerk.value
+    def totale_directe_bouwkosten_grondwerk(self) -> SummedCostItem:
+        return SummedCostItem(description='Totale directe bouwkosten grondwerk', value_excl_BTW=self.totale_BDBK_grondwerk.value_excl_BTW + self.directe_niet_benoemde_bouwkosten_grondwerk.value, value_incl_BTW=self.totale_BDBK_grondwerk.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_grondwerk.value_incl_BTW)
     @property
-    def totale_directe_bouwkosten_constructie(self) -> float:
-        return self.totale_BDBK_constructie + self.directe_niet_benoemde_bouwkosten_constructie.value
+    def totale_directe_bouwkosten_constructie(self) -> SummedCostItem:
+        return SummedCostItem(description='Totale directe bouwkosten constructie', value_excl_BTW=self.totale_BDBK_constructie.value_excl_BTW + self.directe_niet_benoemde_bouwkosten_constructie.value, value_incl_BTW=self.totale_BDBK_constructie.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_constructie.value_incl_BTW)
     @property
-    def totale_directe_bouwkosten_infrastructuur(self) -> float:
-        return self.totale_BDBK_infrastructuur + self.directe_niet_benoemde_bouwkosten_infrastructuur.value
+    def totale_directe_bouwkosten_infrastructuur(self) -> SummedCostItem:
+        return SummedCostItem(description='Totale directe bouwkosten infrastructuur', value_excl_BTW=self.totale_BDBK_infrastructuur.value_excl_BTW + self.directe_niet_benoemde_bouwkosten_infrastructuur.value, value_incl_BTW=self.totale_BDBK_infrastructuur.value_incl_BTW + self.directe_niet_benoemde_bouwkosten_infrastructuur.value_incl_BTW)
     
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         data = {
-            'totale_BDBK_grondwerk': self.totale_BDBK_grondwerk,
-            'totale_BDBK_constructie': self.totale_BDBK_constructie,
-            'totale_BDBK_infrastructuur': self.totale_BDBK_infrastructuur,
+            'totale_BDBK_grondwerk': self.totale_BDBK_grondwerk.to_dict(),
+            'totale_BDBK_constructie': self.totale_BDBK_constructie.to_dict(),
+            'totale_BDBK_infrastructuur': self.totale_BDBK_infrastructuur.to_dict(),
             'directe_niet_benoemde_bouwkosten_grondwerk': self.directe_niet_benoemde_bouwkosten_grondwerk.to_dict(),
             'directe_niet_benoemde_bouwkosten_constructie': self.directe_niet_benoemde_bouwkosten_constructie.to_dict(),
             'directe_niet_benoemde_bouwkosten_infrastructuur': self.directe_niet_benoemde_bouwkosten_infrastructuur.to_dict(),
             'pm_kosten': self.pm_kosten.to_dict(),
             'algemene_kosten': self.algemene_kosten.to_dict(),
             'risico_en_winst': self.risico_en_winst.to_dict(),
-            'totale_directe_bouwkosten': self.totale_directe_bouwkosten,
-            'indirecte_bouwkosten': self.indirecte_bouwkosten,
-            'totale_bouwkosten': self.totale_bouwkosten,
+            'totale_directe_bouwkosten': self.totale_directe_bouwkosten.to_dict(),
+            'indirecte_bouwkosten': self.indirecte_bouwkosten.to_dict(),
+            'totale_bouwkosten': self.totale_bouwkosten.to_dict(),
             }
         return data
 
@@ -224,16 +287,28 @@ class EngineeringCosts:
     winst_en_risico: SurchargeCostItem  # Winst en risico (onvoorziene omstandigheden, faalkosten, e.d.)
 
     @property
-    def direct_engineering_cost(self) -> float:
-        return self.engineering_opdrachtgever.value + self.engineering_opdrachtnemer.value + self.onderzoekskosten.value
+    def direct_engineering_cost(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale directe engineeringkosten",
+            value_excl_BTW=self.engineering_opdrachtgever.value + self.engineering_opdrachtnemer.value + self.onderzoekskosten.value,
+            value_incl_BTW=self.engineering_opdrachtgever.value_incl_BTW + self.engineering_opdrachtnemer.value_incl_BTW + self.onderzoekskosten.value_incl_BTW)
+          
 
     @property
-    def indirect_engineering_cost(self) -> float:
-        return self.algemene_kosten.value + self.winst_en_risico.value
+    def indirect_engineering_cost(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale indirecte engineeringkosten",
+            value_excl_BTW=self.algemene_kosten.value + self.winst_en_risico.value,
+            value_incl_BTW=self.algemene_kosten.value_incl_BTW + self.winst_en_risico.value_incl_BTW
+        )
     
     @property
-    def total_engineering_costs(self) -> float:
-        return self.direct_engineering_cost + self.indirect_engineering_cost
+    def total_engineering_costs(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale engineeringkosten",
+            value_excl_BTW=self.direct_engineering_cost.value_excl_BTW + self.indirect_engineering_cost.value_excl_BTW,
+            value_incl_BTW=self.direct_engineering_cost.value_incl_BTW + self.indirect_engineering_cost.value_incl_BTW
+        )
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -260,16 +335,29 @@ class GeneralCosts:
     planschade_inpassingsmaatregelen: SurchargeCostItem # Planschade & inpassingsmaatregelen
     algemene_kosten: SurchargeCostItem # Algemene kosten (projectmanagement, voorbereiding, e.d.)
     risico_en_winst: SurchargeCostItem # Winst en risico (onvoorziene omstandigheden, faalkosten, e.d.)
-    @property
-    def direct_general_costs(self) -> float:
-        return self.vergunningen_verzekeringen.value + self.kabels_leidingen.value + self.planschade_inpassingsmaatregelen.value
-    @property
-    def indirect_general_costs(self) -> float:
-        return self.algemene_kosten.value + self.risico_en_winst.value
 
     @property
-    def total_general_costs(self) -> float:
-        return self.direct_general_costs + self.indirect_general_costs
+    def direct_general_costs(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale directe algemene kosten",
+            value_excl_BTW=self.vergunningen_verzekeringen.value + self.kabels_leidingen.value + self.planschade_inpassingsmaatregelen.value,
+            value_incl_BTW=self.vergunningen_verzekeringen.value_incl_BTW + self.kabels_leidingen.value_incl_BTW + self.planschade_inpassingsmaatregelen.value_incl_BTW
+        )
+
+    @property
+    def indirect_general_costs(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale indirecte algemene kosten",
+            value_excl_BTW=self.algemene_kosten.value + self.risico_en_winst.value,
+            value_incl_BTW=self.algemene_kosten.value_incl_BTW + self.risico_en_winst.value_incl_BTW
+        )
+    @property
+    def total_general_costs(self) -> SummedCostItem:
+        return SummedCostItem(
+            description="Totale algemene kosten",
+            value_excl_BTW=self.direct_general_costs.value_excl_BTW + self.indirect_general_costs.value_excl_BTW,
+            value_incl_BTW=self.direct_general_costs.value_incl_BTW + self.indirect_general_costs.value_incl_BTW
+        )
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -279,9 +367,9 @@ class GeneralCosts:
             'planschade_inpassingsmaatregelen': self.planschade_inpassingsmaatregelen.to_dict(),
             'algemene_kosten': self.algemene_kosten.to_dict(),
             'risico_en_winst': self.risico_en_winst.to_dict(),
-            'direct_general_costs': self.direct_general_costs,
-            'indirect_general_costs': self.indirect_general_costs,
-            'total_general_costs': self.total_general_costs
+            'direct_general_costs': self.direct_general_costs.to_dict(),
+            'indirect_general_costs': self.indirect_general_costs.to_dict(),
+            'total_general_costs': self.total_general_costs.to_dict()
         }
         return data
 
@@ -311,7 +399,6 @@ class RealEstateCosts:
 @dataclass
 class StructureCosts:
     directe_bouwkosten: CostItem
-    totale_BDBK_constructie: float
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -321,19 +408,15 @@ class StructureCosts:
         }
         return data
 
+    @property
+    def totale_BDBK_constructie(self) -> SummedCostItem:
+        """Benoemde Directe BouwKosten (BDBK)"""
+        return SummedCostItem(description="Benoemde directe bouwkosten constructie", value_excl_BTW=self.directe_bouwkosten.value, value_incl_BTW=self.directe_bouwkosten.value_incl_BTW)
+    
     @classmethod
     def zero(cls) -> "StructureCosts":
-        #ensure that all fields have the right type of zero value (CostItem or float)
-        zero_values = {}
-        for field_name, field_type in cls.__dataclass_fields__.items():
-            if field_type.type == CostItem:
-                zero_values[field_name] = CostItem(unit_cost=0.0, quantity=0.0, unit='')
-            elif field_type.type == float:
-                zero_values[field_name] = 0.0
-            else:
-                raise ValueError(f"Unsupported field type: {field_type.type}")
-        
-        return cls(**zero_values)
+        zero_cost = CostItem(unit_cost=0.0, quantity=0.0, unit='')
+        return cls(**{field: zero_cost for field in cls.__dataclass_fields__})
 
 @dataclass
 class InfrastructureCosts:
@@ -342,6 +425,25 @@ class InfrastructureCosts:
     verwijderen_fietspad: CostItem
     aanleggen_fietspad: CostItem
 
+    @property
+    def totale_BDBK_infrastructuur(self) -> SummedCostItem:
+        """Benoemde Directe BouwKosten (BDBK)"""
+        return SummedCostItem(
+            description="Benoemde directe bouwkosten infrastructuur",
+            value_excl_BTW=(
+                self.verwijderen_weg.value +
+                self.aanleggen_weg.value +
+                self.verwijderen_fietspad.value +
+                self.aanleggen_fietspad.value
+            ),
+            value_incl_BTW=(
+                self.verwijderen_weg.value_incl_BTW +
+                self.aanleggen_weg.value_incl_BTW +
+                self.verwijderen_fietspad.value_incl_BTW +
+                self.aanleggen_fietspad.value_incl_BTW
+            )
+        )
+    
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
         data = {
@@ -354,27 +456,9 @@ class InfrastructureCosts:
 
     @classmethod
     def zero(cls) -> "InfrastructureCosts":
-        #ensure that all fields have the right type of zero value (CostItem or float)
-        zero_values = {}
-        for field_name, field_type in cls.__dataclass_fields__.items():
-            if field_type.type == CostItem:
-                zero_values[field_name] = CostItem(unit_cost=0.0, quantity=0.0, unit='')
-            elif field_type.type == float:
-                zero_values[field_name] = 0.0
-            else:
-                raise ValueError(f"Unsupported field type: {field_type.type}")
-        
-        return cls(**zero_values)
+        zero_cost = CostItem(unit_cost=0.0, quantity=0.0, unit='')
+        return cls(**{field: zero_cost for field in cls.__dataclass_fields__})
     
-    @property
-    def totale_BDBK_infrastructuur(self) -> float:
-        """Benoemde Directe BouwKosten (BDBK)"""
-        return (
-            self.verwijderen_weg.value +
-            self.aanleggen_weg.value +
-            self.verwijderen_fietspad.value +
-            self.aanleggen_fietspad.value
-        )
     
 class EnumerationComplexity(Enum):
     EASY = 'makkelijke maatregel'
@@ -433,10 +517,10 @@ class CostCalculator:
     def build_cost_item(self, quantity, unit_cost_code, unit):
         return CostItem(quantity=quantity, unit_cost=self.unit_price_dict[unit_cost_code].price, unit=unit, description=self.unit_price_dict[unit_cost_code].description)
 
-    def build_surcharge_cost_item(self, base_cost, surcharge_code):
+    def build_surcharge_cost_item(self, base_cost, surcharge_code, BTW = True):
         surcharge_percentage = self.surcharge_dict[surcharge_code].price_percent
         description = self.surcharge_dict[surcharge_code].description
-        return SurchargeCostItem(code=surcharge_code, surcharge_percentage=surcharge_percentage, base_cost=base_cost, description=description)
+        return SurchargeCostItem(code=surcharge_code, surcharge_percentage=surcharge_percentage, base_cost=base_cost, description=description, BTW = BTW)
     
     def calc_real_estate_costs(self, nb_houses: float) -> RealEstateCosts:
         """
@@ -444,20 +528,20 @@ class CostCalculator:
         """
         direct_benoemd_real_estate_cost = CostItem(unit_cost=self.unit_price_dict['Q-VASTGOED'].price, quantity=nb_houses, unit='panden')
         if self.complexity == EnumerationComplexity.EASY:
-            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVMAKNTD')
+            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVMAKNTD', BTW=False)
             _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost.value
-            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVMAKIND')
-            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVMAKNBO')
+            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVMAKIND', BTW=False)
+            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVMAKNBO', BTW=False)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVGEMNTD')
+            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVGEMNTD', BTW=False)
             _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost.value
-            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVGEMIND')
-            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVGEMNBO')
+            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVGEMIND', BTW=False)
+            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVGEMNBO', BTW=False)
         elif self.complexity == EnumerationComplexity.HARD:
-            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVMOENTD')
+            direct_niet_benoemd_real_estate_cost = self.build_surcharge_cost_item(base_cost=direct_benoemd_real_estate_cost.value, surcharge_code='Q-GVMOENTD', BTW=False)
             _direct_real_estate_cost = direct_benoemd_real_estate_cost.value + direct_niet_benoemd_real_estate_cost.value
-            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVMOEIND')
-            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVMOENBO')
+            indirect_real_estate_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost, surcharge_code='Q-GVMOEIND', BTW=False)
+            real_estate_risk_cost = self.build_surcharge_cost_item(base_cost=_direct_real_estate_cost+indirect_real_estate_cost.value, surcharge_code='Q-GVMOENBO', BTW=False)
 
         return RealEstateCosts(
             direct_benoemd_real_estate_cost=direct_benoemd_real_estate_cost,
@@ -527,32 +611,37 @@ class CostCalculator:
             inzaaien_nieuwe_toplaag=inzaaien_nieuwe_toplaag
         )
 
-    def calc_construction_costs(self, groundwork_cost: float = 0.0, structure_cost: float = 0.0, infrastructure_cost: float = 0.0) -> ConstructionCosts:
+    def calc_construction_costs(self, 
+                                groundwork_cost: SummedCostItem = SummedCostItem(description='Groundwork cost', value_excl_BTW=0.0, value_incl_BTW=0.0), 
+                                structure_cost: SummedCostItem = SummedCostItem(description='Structure cost', value_excl_BTW=0.0, value_incl_BTW=0.0), 
+                                infrastructure_cost: SummedCostItem = SummedCostItem(description='Infrastructure cost', value_excl_BTW=0.0, value_incl_BTW=0.0)) -> ConstructionCosts:
+        '''Input costs are excl. BTW, as the surcharge percentages are applied on the base cost excl. BTW'''
+        
         if self.complexity == EnumerationComplexity.EASY:
-            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GGMAKNTD'].price_percent, base_cost=groundwork_cost)
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost)
-            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=infrastructure_cost)
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GGMAKNTD'].price_percent, base_cost=groundwork_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=structure_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMAKNTD', surcharge_percentage=self.surcharge_dict['Q-GCMAKNTD'].price_percent, base_cost=infrastructure_cost.value_excl_BTW)
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GGGEMNTD'].price_percent, base_cost=groundwork_cost)
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=structure_cost)
-            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=infrastructure_cost)
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GGGEMNTD'].price_percent, base_cost=groundwork_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=structure_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCGEMNTD', surcharge_percentage=self.surcharge_dict['Q-GCGEMNTD'].price_percent, base_cost=infrastructure_cost.value_excl_BTW)
         elif self.complexity == EnumerationComplexity.HARD:
-            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMOENTD', surcharge_percentage=self.surcharge_dict['Q-GGMOENTD'].price_percent, base_cost=groundwork_cost)
-            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=structure_cost)
-            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=infrastructure_cost)
+            directe_niet_benoemde_bouwkosten_grondwerk = SurchargeCostItem(code ='Q-GGMOENTD', surcharge_percentage=self.surcharge_dict['Q-GGMOENTD'].price_percent, base_cost=groundwork_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_constructie = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=structure_cost.value_excl_BTW)
+            directe_niet_benoemde_bouwkosten_infrastructuur = SurchargeCostItem(code ='Q-GCMOENTD', surcharge_percentage=self.surcharge_dict['Q-GCMOENTD'].price_percent, base_cost=infrastructure_cost.value_excl_BTW)
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
 
         directe_niet_benoemde_bouwkosten = directe_niet_benoemde_bouwkosten_grondwerk.__add__(directe_niet_benoemde_bouwkosten_constructie).__add__(directe_niet_benoemde_bouwkosten_infrastructuur)
 
-        directe_bouwkosten = groundwork_cost + structure_cost + infrastructure_cost + directe_niet_benoemde_bouwkosten.value
+        directe_bouwkosten = groundwork_cost.__add__(structure_cost).__add__(infrastructure_cost).__add__(SummedCostItem(description='Directe niet benoemde bouwkosten', value_excl_BTW=directe_niet_benoemde_bouwkosten.value, value_incl_BTW=directe_niet_benoemde_bouwkosten.value_incl_BTW))
 
-        pm_cost = SurchargeCostItem(code="Q-EKABKUKMAN", surcharge_percentage=self.surcharge_dict["Q-EKABKUKMAN"].price_percent, base_cost=directe_bouwkosten)
-        general_cost = SurchargeCostItem(code="Q-AK", surcharge_percentage=self.surcharge_dict["Q-AK"].price_percent, base_cost=directe_bouwkosten + pm_cost.value)  # Algemene kosten
-        risk_profit = SurchargeCostItem(code="Q-WR", surcharge_percentage=self.surcharge_dict["Q-WR"].price_percent, base_cost=directe_bouwkosten + pm_cost.value + general_cost.value)  # Winst & risico
+        pm_cost = SurchargeCostItem(code="Q-EKABKUKMAN", surcharge_percentage=self.surcharge_dict["Q-EKABKUKMAN"].price_percent, base_cost=directe_bouwkosten.value_excl_BTW)
+        general_cost = SurchargeCostItem(code="Q-AK", surcharge_percentage=self.surcharge_dict["Q-AK"].price_percent, base_cost=directe_bouwkosten.value_excl_BTW + pm_cost.value)  # Algemene kosten
+        risk_profit = SurchargeCostItem(code="Q-WR", surcharge_percentage=self.surcharge_dict["Q-WR"].price_percent, base_cost=directe_bouwkosten.value_excl_BTW + pm_cost.value + general_cost.value)  # Winst & risico
 
-        indirecte_bouwkosten = pm_cost.value + general_cost.value + risk_profit.value
-        total_costs = directe_bouwkosten + indirecte_bouwkosten
+        indirecte_bouwkosten = SummedCostItem(description='Indirecte bouwkosten', value_excl_BTW=pm_cost.value + general_cost.value + risk_profit.value, value_incl_BTW=pm_cost.value_incl_BTW + general_cost.value_incl_BTW + risk_profit.value_incl_BTW)
+        total_costs = directe_bouwkosten.__add__(indirecte_bouwkosten)
 
         return ConstructionCosts(
             totale_BDBK_grondwerk=groundwork_cost,
@@ -566,31 +655,39 @@ class CostCalculator:
             risico_en_winst=risk_profit,
         )
 
-    def calc_all_engineering_costs(self, construction_cost: float) -> EngineeringCosts:
+    def calc_all_engineering_costs(self, construction_cost: SummedCostItem) -> EngineeringCosts:
         """
 
-        :param construction_cost: Total construction cost from calc_all_construction_costs
+        :param construction_cost: Total construction cost from calc_all_construction_costs: SummedCostItem
         """
 
         if self.complexity == EnumerationComplexity.EASY:
-            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGOG1")
-            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGON1")
+            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGOG1", BTW=False)
+            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGON1")
 
         elif self.complexity == EnumerationComplexity.MEDIUM:
-            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGOG2")
-            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGON2")
+            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGOG2", BTW=False)
+            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGON2")
 
         elif self.complexity == EnumerationComplexity.HARD:
-            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGOG3")
-            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-ENGON3")
+            engineering_opdrachtgever = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGOG3", BTW=False)
+            engineering_opdrachtnemer = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-ENGON3")
         else:
             raise ValueError(f"Unsupported complexity level: {self.complexity}")
-        research_cost = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code="Q-OND")
+        #TODO Check with Peter!
+        research_cost = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code="Q-OND")
         
-        direct_engineering_cost = engineering_opdrachtgever.value + engineering_opdrachtnemer.value + research_cost.value
+        direct_engineering_cost_OG = engineering_opdrachtgever.value 
+        direct_engineering_cost_others = engineering_opdrachtnemer.value + research_cost.value
 
-        general_cost = self.build_surcharge_cost_item(base_cost=direct_engineering_cost, surcharge_code="Q-AK")
-        risk_profit = self.build_surcharge_cost_item(base_cost=direct_engineering_cost + general_cost.value, surcharge_code="Q-WR")
+        
+        general_cost_part1 = self.build_surcharge_cost_item(base_cost=direct_engineering_cost_OG, surcharge_code="Q-AK", BTW=False)
+        general_cost_part2 = self.build_surcharge_cost_item(base_cost=direct_engineering_cost_others, surcharge_code="Q-AK", BTW=True)
+        general_cost = general_cost_part1.__add__(general_cost_part2)
+
+        risk_profit_part1 = self.build_surcharge_cost_item(base_cost=direct_engineering_cost_OG + general_cost_part1.value, surcharge_code="Q-WR", BTW=False)
+        risk_profit_part2 = self.build_surcharge_cost_item(base_cost=direct_engineering_cost_others + general_cost_part2.value, surcharge_code="Q-WR", BTW=True)
+        risk_profit = risk_profit_part1.__add__(risk_profit_part2)
 
 
         return EngineeringCosts(
@@ -601,14 +698,14 @@ class CostCalculator:
             winst_en_risico=risk_profit,
         )
 
-    def calc_general_costs(self, construction_cost: float) -> GeneralCosts:
+    def calc_general_costs(self, construction_cost: SummedCostItem) -> GeneralCosts:
         """
 
         :param construction_cost: Total construction cost from calc_all_construction_costs
         """
-        vergunningen_verzekeringen = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code='Q-VERG')
-        kabels_leidingen = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code='Q-KL')
-        planschade_inpassingsmaatregelen = self.build_surcharge_cost_item(base_cost=construction_cost, surcharge_code='Q-PLAN')
+        vergunningen_verzekeringen = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code='Q-VERG')
+        kabels_leidingen = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code='Q-KL')
+        planschade_inpassingsmaatregelen = self.build_surcharge_cost_item(base_cost=construction_cost.value_excl_BTW, surcharge_code='Q-PLAN')
         
         
         direct_general_costs = vergunningen_verzekeringen.value + kabels_leidingen.value + planschade_inpassingsmaatregelen.value
@@ -624,15 +721,15 @@ class CostCalculator:
             risico_en_winst=risico_winst,
         )
 
-    def calc_risk_cost(self, investering_cost: float, construction_costs: ConstructionCosts) -> float:
+    def calc_risk_cost(self, investering_cost: SummedCostItem, construction_costs: ConstructionCosts) -> float:
         """
 
         :param investering_cost: Sum of the construction total cost, engineering total cost and general total costs
         """
-        #get the total investments for each component based on the share of the directe bouwkosten
-        investering_grond = investering_cost * (construction_costs.totale_directe_bouwkosten_grondwerk/construction_costs.totale_directe_bouwkosten) if construction_costs.totale_directe_bouwkosten > 0 else 0.0
-        investering_constructie = investering_cost * (construction_costs.totale_directe_bouwkosten_constructie/construction_costs.totale_directe_bouwkosten) if construction_costs.totale_directe_bouwkosten > 0 else 0.0
-        investering_infra = investering_cost * (construction_costs.totale_directe_bouwkosten_infrastructuur/construction_costs.totale_directe_bouwkosten) if construction_costs.totale_directe_bouwkosten > 0 else 0.0
+        #get the total investments for each component based on the share of the directe bouwkosten. We first do excl. BTW, as the surcharge percentages are applied on the base cost excl. BTW
+        investering_grond = investering_cost.value_excl_BTW * (construction_costs.totale_directe_bouwkosten_grondwerk.value_excl_BTW/construction_costs.totale_directe_bouwkosten.value_excl_BTW) if construction_costs.totale_directe_bouwkosten.value_excl_BTW > 0 else 0.0
+        investering_constructie = investering_cost.value_excl_BTW * (construction_costs.totale_directe_bouwkosten_constructie.value_excl_BTW/construction_costs.totale_directe_bouwkosten.value_excl_BTW) if construction_costs.totale_directe_bouwkosten.value_excl_BTW > 0 else 0.0
+        investering_infra = investering_cost.value_excl_BTW * (construction_costs.totale_directe_bouwkosten_infrastructuur.value_excl_BTW/construction_costs.totale_directe_bouwkosten.value_excl_BTW) if construction_costs.totale_directe_bouwkosten.value_excl_BTW > 0 else 0.0
         if self.complexity == EnumerationComplexity.EASY:
             risk_grond = self.build_surcharge_cost_item(base_cost=investering_grond, surcharge_code='Q-GGMAKONV')
             risk_constructie = self.build_surcharge_cost_item(base_cost=investering_constructie, surcharge_code='Q-GCMAKONV')
@@ -668,7 +765,6 @@ class CostCalculator:
         directe_bouwkosten = CostItem(unit_cost=totale_directe_bouwkosten_per_meter, quantity=vaklengte, unit='m', description=structure_type,dimension=f'{wandlengte:.1f} m wandlengte')
         return StructureCosts(
             directe_bouwkosten = directe_bouwkosten,
-            totale_BDBK_constructie = directe_bouwkosten.value,
         )
     
 

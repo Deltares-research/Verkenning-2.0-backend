@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 import numpy as np
-from app.cost_calculator import CostCalculator, EnumerationComplexity
+from app.cost_calculator import CostCalculator, EnumerationComplexity, SummedCostItem
 from app.unit_costs_and_surcharges import load_kosten_catalogus
 
 
@@ -43,68 +43,90 @@ def test_complexity_parsing():
 
 
 def test_construction_cost_ground_easy(calculator_easy):
-    costs = calculator_easy.calc_construction_costs(groundwork_cost=1000)
-
-    assert costs.indirecte_bouwkosten > 0
-    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
-    assert costs.totale_bouwkosten == pytest.approx(1365.526464)
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    costs = calculator_easy.calc_construction_costs(groundwork_cost=ground_work_cost)
+    assert costs.indirecte_bouwkosten.value_excl_BTW > 0
+    assert costs.totale_bouwkosten.value_excl_BTW > costs.totale_BDBK_grondwerk.value_excl_BTW
+    assert costs.totale_bouwkosten.value_excl_BTW == pytest.approx(1365.526464)
 
 def test_construction_cost_medium(calculator_medium):
-    costs = calculator_medium.calc_construction_costs(groundwork_cost=1000)
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    costs = calculator_medium.calc_construction_costs(groundwork_cost=ground_work_cost)
 
-    assert costs.indirecte_bouwkosten > 0
-    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
-    assert costs.totale_bouwkosten == pytest.approx(1392.5665920000001)
+    assert costs.indirecte_bouwkosten.value_excl_BTW > 0
+    assert costs.totale_bouwkosten.value_excl_BTW > costs.totale_BDBK_grondwerk.value_excl_BTW
+    assert costs.totale_bouwkosten.value_excl_BTW == pytest.approx(1392.5665920000001)
 
 def test_construction_cost_ground_hard(calculator_hard):
-    costs = calculator_hard.calc_construction_costs(groundwork_cost=1000)
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    costs = calculator_hard.calc_construction_costs(groundwork_cost=ground_work_cost)
 
-    assert costs.indirecte_bouwkosten > 0
-    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
-    assert costs.totale_bouwkosten == pytest.approx(1419.60672)
+    assert costs.indirecte_bouwkosten.value_excl_BTW > 0
+    assert costs.totale_bouwkosten.value_excl_BTW > costs.totale_BDBK_grondwerk.value_excl_BTW
+    assert costs.totale_bouwkosten.value_excl_BTW == pytest.approx(1419.60672)
 
 def test_construction_cost_structure_hard(calculator_hard):
-    costs = calculator_hard.calc_construction_costs(structure_cost=1000)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    costs = calculator_hard.calc_construction_costs(structure_cost=structure_cost)
 
-    assert costs.indirecte_bouwkosten > 0
-    assert costs.totale_bouwkosten > costs.totale_BDBK_grondwerk
-    assert costs.totale_bouwkosten == pytest.approx(1554.80736)
+    assert costs.indirecte_bouwkosten.value_excl_BTW > 0
+    assert costs.totale_bouwkosten.value_excl_BTW > costs.totale_BDBK_grondwerk.value_excl_BTW
+    assert costs.totale_bouwkosten.value_excl_BTW == pytest.approx(1554.80736)
 
 def test_engineering_cost_easy(calculator_easy):
-    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_easy.calc_construction_costs(structure_cost=1000).totale_bouwkosten
-    constr_cost_combined = calculator_easy.calc_construction_costs(groundwork_cost=1000, structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten
+    constr_cost_structure = calculator_easy.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten
+    constr_cost_combined = calculator_easy.calc_construction_costs(groundwork_cost=ground_work_cost, structure_cost=structure_cost).totale_bouwkosten
     costs_ground = calculator_easy.calc_all_engineering_costs(constr_cost_ground)
     costs_structure = calculator_easy.calc_all_engineering_costs(constr_cost_structure)
     costs_combined = calculator_easy.calc_all_engineering_costs(constr_cost_combined)
 
-    assert costs_ground.total_engineering_costs == pytest.approx(229.23656440492343)
-    assert costs_structure.total_engineering_costs == pytest.approx(238.31524022294016)
-    assert costs_combined.total_engineering_costs == pytest.approx(467.5518046278636)
-    assert costs_combined.total_engineering_costs == pytest.approx(costs_ground.total_engineering_costs + costs_structure.total_engineering_costs)
+    assert np.allclose(costs_ground.total_engineering_costs.value_excl_BTW, 229.24, rtol=1e-2)
+    assert np.allclose(costs_structure.total_engineering_costs.value_excl_BTW, 238.32, rtol=1e-2)
+    assert np.allclose(costs_combined.total_engineering_costs.value_excl_BTW, 467.55, rtol=1e-2)
+    assert np.allclose(costs_combined.total_engineering_costs.value_excl_BTW, costs_ground.total_engineering_costs.value_excl_BTW + costs_structure.total_engineering_costs.value_excl_BTW)
+
+    #compare total incl BTW as well
+    assert np.allclose(costs_ground.total_engineering_costs.value_incl_BTW, 251.53, rtol=1e-2)
+    #check that total incl BTW is less than 21% higher than total excl BTW (assuming 21% BTW)
+    assert costs_ground.total_engineering_costs.value_incl_BTW/costs_ground.total_engineering_costs.value_excl_BTW < 1.21
 
 def test_engineering_cost_medium(calculator_medium):
-    constr_cost_ground = calculator_medium.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_medium.calc_construction_costs(structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_medium.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten.value_excl_BTW
+    constr_cost_structure = calculator_medium.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten.value_excl_BTW
     costs_ground = calculator_medium.calc_all_engineering_costs(constr_cost_ground)
     costs_structure = calculator_medium.calc_all_engineering_costs(constr_cost_structure)
 
-    assert costs_ground.total_engineering_costs == pytest.approx(312.224191681023)
-    assert costs_structure.total_engineering_costs == pytest.approx(333.4433115040051)
-    assert calculator_medium.calc_all_engineering_costs(constr_cost_ground.__add__(constr_cost_structure)).total_engineering_costs == pytest.approx(645.6675031850281)
+    assert np.allclose(costs_ground.total_engineering_costs.value_excl_BTW, 312.22, rtol=1e-2)
+    assert np.allclose(costs_structure.total_engineering_costs.value_excl_BTW, 333.44, rtol=1e-2)
+    assert np.allclose(calculator_medium.calc_all_engineering_costs(constr_cost_ground.__add__(constr_cost_structure)).total_engineering_costs.value_excl_BTW, 645.6675031850281, rtol=1e-2)
 
+    assert np.allclose(costs_ground.total_engineering_costs.value_incl_BTW, 346.86, rtol=1e-2)
+    
 def test_engineering_cost_hard(calculator_hard):
-    constr_cost_ground = calculator_hard.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_hard.calc_construction_costs(structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_hard.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten.value_excl_BTW
+    constr_cost_structure = calculator_hard.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten.value_excl_BTW
     costs_ground = calculator_hard.calc_all_engineering_costs(constr_cost_ground)
     costs_structure = calculator_hard.calc_all_engineering_costs(constr_cost_structure)
 
-    assert costs_ground.total_engineering_costs == pytest.approx(398.25835446652417)
-    assert costs_structure.total_engineering_costs == pytest.approx(436.187721558574)
+    assert np.allclose(costs_ground.total_engineering_costs.value_excl_BTW, 398.26, rtol=1e-2)
+    assert np.allclose(costs_structure.total_engineering_costs.value_excl_BTW, 436.19, rtol=1e-2)
+
+    assert np.allclose(calculator_hard.calc_all_engineering_costs(constr_cost_ground.__add__(constr_cost_structure)).total_engineering_costs.value_excl_BTW, 834.45, rtol=1e-2)
+
+    assert np.allclose(costs_ground.total_engineering_costs.value_incl_BTW, 446.12, rtol=1e-2)
 
 def test_general_cost_easy(calculator_easy):
-    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_easy.calc_construction_costs(structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten.value_excl_BTW
+    constr_cost_structure = calculator_easy.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten.value_excl_BTW
     costs_ground = calculator_easy.calc_general_costs(constr_cost_ground)
     costs_structure = calculator_easy.calc_general_costs(constr_cost_structure)
 
@@ -113,8 +135,10 @@ def test_general_cost_easy(calculator_easy):
     np.testing.assert_almost_equal(costs_ground.total_general_costs/constr_cost_ground, costs_structure.total_general_costs/constr_cost_structure, decimal=3)
 
 def test_general_cost_medium(calculator_medium):
-    constr_cost_ground = calculator_medium.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_medium.calc_construction_costs(structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_medium.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten.value_excl_BTW
+    constr_cost_structure = calculator_medium.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten.value_excl_BTW
     costs_ground = calculator_medium.calc_general_costs(constr_cost_ground)
     costs_structure = calculator_medium.calc_general_costs(constr_cost_structure)
 
@@ -123,8 +147,10 @@ def test_general_cost_medium(calculator_medium):
     assert costs_ground.total_general_costs/constr_cost_ground == costs_structure.total_general_costs/constr_cost_structure
 
 def test_general_cost_hard(calculator_hard):
-    constr_cost_ground = calculator_hard.calc_construction_costs(groundwork_cost=1000).totale_bouwkosten
-    constr_cost_structure = calculator_hard.calc_construction_costs(structure_cost=1000).totale_bouwkosten
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    structure_cost = SummedCostItem(description='Structure cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_hard.calc_construction_costs(groundwork_cost=ground_work_cost).totale_bouwkosten.value_excl_BTW
+    constr_cost_structure = calculator_hard.calc_construction_costs(structure_cost=structure_cost).totale_bouwkosten.value_excl_BTW
 
     costs_ground = calculator_hard.calc_general_costs(constr_cost_ground)
     costs_structure = calculator_hard.calc_general_costs(constr_cost_structure)
@@ -134,17 +160,18 @@ def test_general_cost_hard(calculator_hard):
     assert costs_ground.total_general_costs/constr_cost_ground == costs_structure.total_general_costs/constr_cost_structure
 
 def test_total_cost_ground_easy(calculator_easy):
-    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=1000)
+    ground_work_cost = SummedCostItem(description='Groundwork cost', value_excl_BTW=1000, value_incl_BTW=1210)
+    constr_cost_ground = calculator_easy.calc_construction_costs(groundwork_cost=ground_work_cost)
     eng_cost = calculator_easy.calc_all_engineering_costs(constr_cost_ground.totale_bouwkosten).total_engineering_costs
     gen_cost = calculator_easy.calc_general_costs(constr_cost_ground.totale_bouwkosten).total_general_costs
-    total_investment = constr_cost_ground.totale_bouwkosten + eng_cost + gen_cost
+    total_investment = constr_cost_ground.totale_bouwkosten.__add__(eng_cost).__add__(gen_cost)
     risk_cost = calculator_easy.calc_risk_cost(total_investment, constr_cost_ground)
 
-    total_cost_excl_BTW = total_investment + risk_cost.value
+    total_cost= total_investment.__add__(SummedCostItem(description="Risk cost", value_excl_BTW=risk_cost.value, value_incl_BTW=risk_cost.value_incl_BTW))
 
-    assert np.allclose(total_investment, 1717.84306, rtol=1e-2)
+    assert np.allclose(total_investment.value_excl_BTW, 1717.84306, rtol=1e-2)
     assert np.allclose(risk_cost.value, 171.7843062, rtol=1e-2)
-    assert np.allclose(total_cost_excl_BTW, 1889.6273692832228, rtol=1e-2)
+    assert np.allclose(total_cost.value_excl_BTW, 1889.6273692832228, rtol=1e-2)
 
 def test_total_cost_ground_medium(calculator_medium):
     constr_cost_ground = calculator_medium.calc_construction_costs(groundwork_cost=1000)

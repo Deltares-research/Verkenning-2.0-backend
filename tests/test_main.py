@@ -233,7 +233,7 @@ def test_cost_calculation_for_ground_design(gdf_ground_base):
         "geojson_dike": geojson_data,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 132827.18, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 134079.41, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 26433.92, rtol=1e-2)
 
 def test_cost_calculation_for_ground_and_structure(gdf_ground_base, gdf_structure):
@@ -242,9 +242,9 @@ def test_cost_calculation_for_ground_and_structure(gdf_ground_base, gdf_structur
         "geojson_structure": gdf_structure.__geo_interface__,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_grondwerk'], 95383.00, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 754540.17, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_grondwerk']['value_excl_BTW'], 96282.22, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie']['value_excl_BTW'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 754540.17, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 230308.25, rtol=1e-2)
 
 def test_cost_calculation_for_structure_only(gdf_structure):
