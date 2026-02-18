@@ -98,6 +98,7 @@ class CostCalculationRequest(BaseModel):
     geojson_dike: GeoJSONInput | None = None
     geojson_structure: GeoJSONInput | None = None
     complexity: str = "gemiddelde maatregel"
+    excavation_mode: str = 'envelope'  # or 'cut_and_fill'
     road_surface: float = 0.0
     number_houses: int = 0
 
@@ -231,7 +232,7 @@ async def calculate_total_cost(
         else:
             gdf_structure = None
 
-        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=payload.complexity)
+        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=payload.complexity, excavation_mode=payload.excavation_mode)
 
         cost_breakdown = dike_model.compute_cost(road_area=payload.road_surface,
                                                  nb_houses=payload.number_houses)
