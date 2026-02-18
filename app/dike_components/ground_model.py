@@ -195,7 +195,13 @@ class GroundModel:
 
         return design_z_global
 
-    def calculate_3d_surface_TIN(self, height_source: str = 'ahn'):
+    def calculate_3d_surface_TIN(self, height_source: str = 'ahn') -> float:
+        """
+        Calculate the 3d surface area using a TIN method. This method uses a special interpolation technique to
+        compute area for a non-planar surface. It is computationally more expensive however.
+
+        params: height_source: calculate the area of either the AHN surface or the design surface.
+        """
 
         # Build TIN from valid AHN points
         if height_source not in ['ahn', 'design']:
