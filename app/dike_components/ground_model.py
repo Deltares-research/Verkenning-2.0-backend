@@ -92,7 +92,7 @@ class GroundModel:
         self.elevation = elev
         return elev
 
-    def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
+    def calculate_volume_v3_v4_v5(self, 
                                   thickness_top_layer: float = 0.2,
                                   thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
 
@@ -107,12 +107,12 @@ class GroundModel:
         sand_layer_top_surface = []
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
-        for row in list(design_3d_surface):
+        for row in list(self.design_export_3d.geometry):
             clay_layer_top_surface.append(Polygon([(x, y, z - thickness_top_layer) for x, y, z in row.exterior.coords]))
             sand_layer_top_surface.append(
                 Polygon([(x, y, z - thickness_top_layer - thickness_clay_layer) for x, y, z in row.exterior.coords]))
 
-        volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
+        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
 
@@ -122,7 +122,7 @@ class GroundModel:
 
         return V3, V4, V5
 
-    def calculate_volume_v1b_v2b(self, design_3d_surface: gpd.GeoSeries, thickness_top_layer: float = 0.2,
+    def calculate_volume_v1b_v2b(self, thickness_top_layer: float = 0.2,
                                  thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
         """
         Compute re-usable volumes:
@@ -173,14 +173,13 @@ class GroundModel:
         S5: # surface area of the new dike design
         """
 
-        design_3d_surface = self.design_export_3d.geometry
 
         ##### Calculate filling volumes V3, V4, V5:
-        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, thickness_top_layer=thickness_top_layer,
+        V3, V4, V5 = self.calculate_volume_v3_v4_v5(thickness_top_layer=thickness_top_layer,
                                                     thickness_clay_layer=thickness_clay_layer)
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=thickness_top_layer,
+        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(thickness_top_layer=thickness_top_layer,
                                                      thickness_clay_layer=thickness_clay_layer)
 
         S5 = self.calculate_total_3d_surface_area().get(

@@ -227,10 +227,21 @@ def test_calculate_design_volume_2d_geometry():
     assert response.status_code == 500
     assert "3D" in response.json()["detail"]
 
-def test_cost_calculation_for_ground_design(gdf_ground_base):
+def test_cost_calculation_for_ground_design_envelope(gdf_ground_base):
     geojson_data = gdf_ground_base.__geo_interface__
     payload = {
-        "geojson_dike": geojson_data,}
+        "geojson_dike": geojson_data,
+        "excavation_mode": "envelope"}
+    response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
+    assert response.status_code == 200
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 134079.41, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 26433.92, rtol=1e-2)
+
+def test_cost_calculation_for_ground_design_cut_and_fill(gdf_ground_base):
+    geojson_data = gdf_ground_base.__geo_interface__
+    payload = {
+        "geojson_dike": geojson_data,
+        "excavation_mode": "cut_and_fill"}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
     np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 134079.41, rtol=1e-2)
