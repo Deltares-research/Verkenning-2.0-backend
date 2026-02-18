@@ -30,6 +30,19 @@ class GroundModel:
             raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
         self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
 
+        self.import_elevation_data()
+
+    def import_elevation_data(self):
+        # Combine polygons to get full extent
+        combined_poly = unary_union(self.design_export_3d["geometry"])
+
+        # 2) Generate a global grid
+        self.grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
+
+        # 3) Get the AHN elevations for the grid
+        self.elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, self.grid_pts_global)
+
+
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
 
@@ -122,16 +135,11 @@ class GroundModel:
         # It is difficult to locate the toe lijn automatically. We now assume that the surface covers the entire area of the polygon. 
         # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
         RATIO_TOE_DIKE_TO_EXTENT = 1.0  
-        combined_poly = unary_union(design_3d_surface)
-
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
 
         # Build TIN from valid AHN points
-        valid = ~np.isnan(elev_global)
-        points_xy = grid_pts_global[valid]
-        points_z = elev_global[valid]
+        valid = ~np.isnan(self.elev_global)
+        points_xy = self.grid_pts_global[valid]
+        points_z = self.elev_global[valid]
 
         points_3d = np.column_stack((points_xy, points_z))  # (N,3)
         points_xy = points_3d[:, :2]
@@ -202,17 +210,9 @@ class GroundModel:
         """
         Calculate the volume of soil between a designated surface and the AHN ground surface
         """
-        # Combine polygons to get full extent
-        combined_poly = unary_union(surface)
 
-        # 2) Generate a global grid
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        # 3) Get the AHN elevations for the grid
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-
-        nan_count = np.isnan(elev_global).sum()
-        valid_count = len(elev_global) - nan_count
+        nan_count = np.isnan(self.elev_global).sum()
+        valid_count = len(self.elev_global) - nan_count
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
@@ -223,7 +223,7 @@ class GroundModel:
         for row in list(surface):
             poly = row
             path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
-            mask = path.contains_points(grid_pts_global)
+            mask = path.contains_points(self.grid_pts_global)
             points_in_poly = np.sum(mask)
             masks.append(mask)
 
@@ -236,8 +236,8 @@ class GroundModel:
             mask = masks[idx]
 
             # Get grid points inside this polygon
-            grid_pts_in_poly = grid_pts_global[mask]
-            elev_poly = elev_global[mask]
+            grid_pts_in_poly = self.grid_pts_global[mask]
+            elev_poly = self.elev_global[mask]
 
             if len(grid_pts_in_poly) == 0:
                 print(f"\nPolygon {idx}: No grid points, skipping")
@@ -275,8 +275,8 @@ class GroundModel:
             'fill_volume': tot_volume_fill,
             'cut_volume': tot_volume_cut,
             'net_volume': tot_volume_fill - tot_volume_cut,
-            'area': len(grid_pts_global) * (self.grid_size ** 2),
-            'grid_points': len(grid_pts_global)
+            'area': len(self.grid_pts_global) * (self.grid_size ** 2),
+            'grid_points': len(self.grid_pts_global)
         }
     def cut_and_fill_volume_and_area(self, dV: np.ndarray) -> dict:
         fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
@@ -301,16 +301,7 @@ class GroundModel:
 
         print("\n=== RUIMTEBESLAG 2D CALCULATION (Alpha Shape) ===")
 
-        # 1) Combine polygons to get full extent
-        combined_poly = unary_union(self.design_export_3d.geometry)
-
-        # 2) Generate a global grid
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        # 3) Get the AHN elevations for the grid
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-
-        valid_count = len(elev_global) - np.isnan(elev_global).sum()
+        valid_count = len(self.elev_global) - np.isnan(self.elev_global).sum()
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
@@ -321,7 +312,7 @@ class GroundModel:
         for idx, row in self.design_export_3d.iterrows():
             poly = row.geometry
             path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
-            mask = path.contains_points(grid_pts_global)
+            mask = path.contains_points(self.grid_pts_global)
             masks.append(mask)
 
         # 5) Find all points where design elevation > ground elevation
@@ -331,8 +322,8 @@ class GroundModel:
             poly = row.geometry
             mask = masks[idx]
 
-            grid_pts_in_poly = grid_pts_global[mask]
-            elev_poly = elev_global[mask]
+            grid_pts_in_poly = self.grid_pts_global[mask]
+            elev_poly = self.elev_global[mask]
 
             if len(grid_pts_in_poly) == 0:
                 continue
