@@ -252,8 +252,8 @@ def test_cost_calculation_for_structure_only(gdf_structure):
         "geojson_structure": gdf_structure.__geo_interface__,}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 620460.76, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie']['value_excl_BTW'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_incl_BTW'], 750757.52, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 203874.33, rtol=1e-2)
 
 def test_cost_calculation_for_combination_of_all(gdf_ground_base, gdf_structure):
@@ -264,6 +264,6 @@ def test_cost_calculation_for_combination_of_all(gdf_ground_base, gdf_structure)
         "road_surface": 1000.0}
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten'], 858332.35, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie']['value_excl_BTW'], 417198.65, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 858332.35, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 264412.84, rtol=1e-2)

@@ -73,6 +73,8 @@ class SurchargeCostItem:
         BTW_2 = other.value_incl_BTW - other.value
         if total_base_cost > 0:
             new_BTW_percentage = (BTW_1 + BTW_2) / (total_base_cost * new_surcharge_percentage / 100.0) * 100.0
+        else:
+            new_BTW_percentage = 0.0
         return SurchargeCostItem(
             code='',
             surcharge_percentage=new_surcharge_percentage,
@@ -318,9 +320,9 @@ class EngineeringCosts:
             'onderzoekskosten': self.onderzoekskosten.to_dict(),
             'algemene_kosten': self.algemene_kosten.to_dict(),
             'winst_en_risico': self.winst_en_risico.to_dict(),
-            'direct_engineering_cost': self.direct_engineering_cost,
-            'indirect_engineering_cost': self.indirect_engineering_cost,
-            'total_engineering_costs': self.total_engineering_costs
+            'direct_engineering_cost': self.direct_engineering_cost.to_dict(),
+            'indirect_engineering_cost': self.indirect_engineering_cost.to_dict(),
+            'total_engineering_costs': self.total_engineering_costs.to_dict()
         }
         return data
 
@@ -382,7 +384,11 @@ class RealEstateCosts:
 
     @property
     def total_real_estate_costs(self) -> float:
-        return self.direct_benoemd_real_estate_cost.value + self.direct_niet_benoemd_real_estate_cost.value + self.indirect_real_estate_cost.value + self.real_estate_risk_cost.value
+        return SummedCostItem(
+            description="Totale vastgoedkosten",
+            value_excl_BTW=self.direct_benoemd_real_estate_cost.value + self.direct_niet_benoemd_real_estate_cost.value + self.indirect_real_estate_cost.value + self.real_estate_risk_cost.value,
+            value_incl_BTW=self.direct_benoemd_real_estate_cost.value_incl_BTW + self.direct_niet_benoemd_real_estate_cost.value_incl_BTW + self.indirect_real_estate_cost.value_incl_BTW + self.real_estate_risk_cost.value_incl_BTW
+        )
 
     def to_dict(self) -> dict:
         """Serialize the dataclass to a dict"""
@@ -391,7 +397,7 @@ class RealEstateCosts:
             'direct_niet_benoemd_real_estate_cost': self.direct_niet_benoemd_real_estate_cost.to_dict(),
             'indirect_real_estate_cost': self.indirect_real_estate_cost.to_dict(),
             'real_estate_risk_cost': self.real_estate_risk_cost.to_dict(),
-            'total_real_estate_costs': self.total_real_estate_costs
+            'total_real_estate_costs': self.total_real_estate_costs.to_dict()
         }
         return data
 
@@ -404,7 +410,7 @@ class StructureCosts:
         """Serialize the dataclass to a dict"""
         data = {
             'directe_bouwkosten': self.directe_bouwkosten.to_dict(),
-            'totale_BDBK_constructie': self.totale_BDBK_constructie
+            'totale_BDBK_constructie': self.totale_BDBK_constructie.to_dict()
         }
         return data
 
