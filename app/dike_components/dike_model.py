@@ -14,12 +14,12 @@ class DikeModel:
     '''Model representing a dike with associated ground and structure models.'''
 
     def __init__(self, _3d_ground_polygon: gpd.GeoDataFrame = None, _2d_structure: gpd.GeoDataFrame = None,
-                 grid_size: float = 0.525, complexity: str = 'gemiddelde maatregel'):
+                 grid_size: float = 0.525, complexity: str = 'gemiddelde maatregel', excavation_mode: str = 'envelope'):
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.complexity = complexity
         if _3d_ground_polygon is not None:
             self._3d_ground_polygon = _3d_ground_polygon
-            self.ground_model = GroundModel(_3d_ground_polygon, grid_size=grid_size)
+            self.ground_model = GroundModel(_3d_ground_polygon, grid_size=grid_size, excavation_mode=excavation_mode)
         if _2d_structure is not None:
             self._2d_structure = _2d_structure
             self._type = _2d_structure.loc[0, 'type']

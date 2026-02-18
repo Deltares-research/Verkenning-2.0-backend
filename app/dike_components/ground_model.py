@@ -17,10 +17,31 @@ from ..utils import reproject_polygon_with_z
 
 
 class GroundModel:
-    def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525):
+    def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525, excavation_mode = 'envelope'):
+        '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
+        two excavation modes are supported:
+        - envelope: the design surface is treated as an envelope. All cells where soil is below the design surface will be supplemented. All cells where soil is above the design surface will be left as is. This is the default method and is preferable for typical soil reinforcements in order to avoid removing all on and off ramps to the dike.
+        - cut_and_fill: separate cut and fill volumes are calculated based on the actual difference between the design surface and the AHN surface. In the end the profile will be equal to the design surface on all locations. This approach is more suitable for dike reconstructions where the entire dike profile is removed and rebuilt, such as in a realignment. This options is available but not provided to users at the moment.
+        '''
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.design_export_3d = design_export_3d
         self.design_export_3d["geometry"] = self.design_export_3d["geometry"].apply(reproject_polygon_with_z)
+        if not excavation_mode in ['envelope', 'cut_and_fill']:
+            raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
+        self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
+
+        self.import_elevation_data()
+
+    def import_elevation_data(self):
+        # Combine polygons to get full extent
+        combined_poly = unary_union(self.design_export_3d["geometry"])
+
+        # 2) Generate a global grid
+        self.grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
+
+        # 3) Get the AHN elevations for the grid
+        self.elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, self.grid_pts_global)
+
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -71,7 +92,7 @@ class GroundModel:
         self.elevation = elev
         return elev
 
-    def calculate_volume_v3_v4_v5(self, design_3d_surface: gpd.GeoSeries,
+    def calculate_volume_v3_v4_v5(self, 
                                   thickness_top_layer: float = 0.2,
                                   thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
 
@@ -86,12 +107,12 @@ class GroundModel:
         sand_layer_top_surface = []
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
-        for row in list(design_3d_surface):
+        for row in list(self.design_export_3d.geometry):
             clay_layer_top_surface.append(Polygon([(x, y, z - thickness_top_layer) for x, y, z in row.exterior.coords]))
             sand_layer_top_surface.append(
                 Polygon([(x, y, z - thickness_top_layer - thickness_clay_layer) for x, y, z in row.exterior.coords]))
 
-        volume_below_design_surface = self.calculate_volume_below_surface(design_3d_surface).get('fill_volume')
+        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get('fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
 
@@ -101,7 +122,7 @@ class GroundModel:
 
         return V3, V4, V5
 
-    def calculate_volume_v1b_v2b(self, design_3d_surface: gpd.GeoSeries, thickness_top_layer: float = 0.2,
+    def calculate_volume_v1b_v2b(self, thickness_top_layer: float = 0.2,
                                  thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
         """
         Compute re-usable volumes:
@@ -114,16 +135,11 @@ class GroundModel:
         # It is difficult to locate the toe lijn automatically. We now assume that the surface covers the entire area of the polygon. 
         # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
         RATIO_TOE_DIKE_TO_EXTENT = 1.0  
-        combined_poly = unary_union(design_3d_surface)
-
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
 
         # Build TIN from valid AHN points
-        valid = ~np.isnan(elev_global)
-        points_xy = grid_pts_global[valid]
-        points_z = elev_global[valid]
+        valid = ~np.isnan(self.elev_global)
+        points_xy = self.grid_pts_global[valid]
+        points_z = self.elev_global[valid]
 
         points_3d = np.column_stack((points_xy, points_z))  # (N,3)
         points_xy = points_3d[:, :2]
@@ -157,14 +173,13 @@ class GroundModel:
         S5: # surface area of the new dike design
         """
 
-        design_3d_surface = self.design_export_3d.geometry
 
         ##### Calculate filling volumes V3, V4, V5:
-        V3, V4, V5 = self.calculate_volume_v3_v4_v5(design_3d_surface, thickness_top_layer=thickness_top_layer,
+        V3, V4, V5 = self.calculate_volume_v3_v4_v5(thickness_top_layer=thickness_top_layer,
                                                     thickness_clay_layer=thickness_clay_layer)
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(design_3d_surface, thickness_top_layer=thickness_top_layer,
+        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(thickness_top_layer=thickness_top_layer,
                                                      thickness_clay_layer=thickness_clay_layer)
 
         S5 = self.calculate_total_3d_surface_area().get(
@@ -194,28 +209,20 @@ class GroundModel:
         """
         Calculate the volume of soil between a designated surface and the AHN ground surface
         """
-        # Combine polygons to get full extent
-        combined_poly = unary_union(surface)
 
-        # 2) Generate a global grid
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        # 3) Get the AHN elevations for the grid
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-
-        nan_count = np.isnan(elev_global).sum()
-        valid_count = len(elev_global) - nan_count
+        nan_count = np.isnan(self.elev_global).sum()
+        valid_count = len(self.elev_global) - nan_count
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
-            return {'fill_volume': 0.0, 'cut_volume': 0.0, 'total_volume': 0.0, 'area': 0.0, 'grid_points': 0}
+            return {'fill_volume': 0.0, 'cut_volume': 0.0, 'net_volume': 0.0, 'area': 0.0, 'grid_points': 0}
 
         # 4) Precompute masks for each polygon
         masks = []
         for row in list(surface):
             poly = row
             path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
-            mask = path.contains_points(grid_pts_global)
+            mask = path.contains_points(self.grid_pts_global)
             points_in_poly = np.sum(mask)
             masks.append(mask)
 
@@ -228,8 +235,8 @@ class GroundModel:
             mask = masks[idx]
 
             # Get grid points inside this polygon
-            grid_pts_in_poly = grid_pts_global[mask]
-            elev_poly = elev_global[mask]
+            grid_pts_in_poly = self.grid_pts_global[mask]
+            elev_poly = self.elev_global[mask]
 
             if len(grid_pts_in_poly) == 0:
                 print(f"\nPolygon {idx}: No grid points, skipping")
@@ -254,20 +261,32 @@ class GroundModel:
 
             # Compute volume with interpolated heights
             dV = design_heights_valid - elev_poly_valid
-            fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
-            cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
-
+            if self.excavation_mode == 'cut_and_fill':
+                fill, cut = self.cut_and_fill_volume_and_area(dV)
+            elif self.excavation_mode == 'envelope':
+                fill, cut = self.get_envelope_volume_and_area(dV)
+            else:
+                raise ValueError(f"Invalid excavation mode: {self.excavation_mode}")
             tot_volume_fill += fill
             tot_volume_cut += cut
 
         return {
             'fill_volume': tot_volume_fill,
             'cut_volume': tot_volume_cut,
-            'total_volume': tot_volume_fill - tot_volume_cut,
-            'area': len(grid_pts_global) * (self.grid_size ** 2),
-            'grid_points': len(grid_pts_global)
+            'net_volume': tot_volume_fill - tot_volume_cut,
+            'area': len(self.grid_pts_global) * (self.grid_size ** 2),
+            'grid_points': len(self.grid_pts_global)
         }
-
+    def cut_and_fill_volume_and_area(self, dV: np.ndarray) -> dict:
+        fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
+        cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
+        return fill, cut
+    
+    def get_envelope_volume_and_area(self, dV: np.ndarray) -> dict:
+        fill = np.sum(np.maximum(dV, 0) * self.grid_size ** 2)
+        cut = 0.0  # No excavation in envelope mode
+        return fill, cut
+    
     def calculate_ruimtebeslag_2d(self, alpha: float = 5.0):
         """
         Calculate the 2D ruimtebeslag (footprint area) where design is above ground.
@@ -281,16 +300,7 @@ class GroundModel:
 
         print("\n=== RUIMTEBESLAG 2D CALCULATION (Alpha Shape) ===")
 
-        # 1) Combine polygons to get full extent
-        combined_poly = unary_union(self.design_export_3d.geometry)
-
-        # 2) Generate a global grid
-        grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
-
-        # 3) Get the AHN elevations for the grid
-        elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, grid_pts_global)
-
-        valid_count = len(elev_global) - np.isnan(elev_global).sum()
+        valid_count = len(self.elev_global) - np.isnan(self.elev_global).sum()
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
@@ -301,7 +311,7 @@ class GroundModel:
         for idx, row in self.design_export_3d.iterrows():
             poly = row.geometry
             path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
-            mask = path.contains_points(grid_pts_global)
+            mask = path.contains_points(self.grid_pts_global)
             masks.append(mask)
 
         # 5) Find all points where design elevation > ground elevation
@@ -311,8 +321,8 @@ class GroundModel:
             poly = row.geometry
             mask = masks[idx]
 
-            grid_pts_in_poly = grid_pts_global[mask]
-            elev_poly = elev_global[mask]
+            grid_pts_in_poly = self.grid_pts_global[mask]
+            elev_poly = self.elev_global[mask]
 
             if len(grid_pts_in_poly) == 0:
                 continue
@@ -423,10 +433,6 @@ class GroundModel:
             traceback.print_exc()
             return {'type': 'FeatureCollection', 'features': [], 'total_area_m2': 0.0, 'num_polygons': 0}
 
-        return {
-            'ruimtebeslag_2d_points': above_ground_points
-        }
-
     def calculate_total_3d_surface_area(self):
         """
         Calculate total 3D surface area assuming every polygon is planar.
@@ -453,69 +459,5 @@ class GroundModel:
         for idx, row in self.design_export_3d.iterrows():
             coords_3d = row.geometry.exterior.coords
             total_area += planar_polygon_area_3d(coords_3d)
-
-        return {'total_3d_area_m2': total_area}
-
-    def calculate_3d_surface_area_above_ahn(self, grid_size: float = None):
-        """
-        Calculate the 3D surface area of planar polygons only where the surface is above AHN.
-
-        :param ahn_raster_func: function that returns AHN elevation at (x, y)
-                                e.g., ahn_raster_func(x, y) -> float
-        :return: dict with total 3D area
-        """
-        print("\n=== 3D SURFACE AREA ABOVE AHN (PLANAR POLYGONS) ===")
-
-        def planar_polygon_area_3d(coords):
-            """Compute 3D area of a planar polygon using Newell's method"""
-            coords = np.array(coords)
-            n = len(coords)
-            Ax = Ay = Az = 0.0
-            for i in range(n):
-                x0, y0, z0 = coords[i]
-                x1, y1, z1 = coords[(i + 1) % n]
-                Ax += (y0 - y1) * (z0 + z1)
-                Ay += (z0 - z1) * (x0 + x1)
-                Az += (x0 - x1) * (y0 + y1)
-            return 0.5 * np.sqrt(Ax ** 2 + Ay ** 2 + Az ** 2)
-
-        total_area = 0.0
-
-        for idx, row in self.design_export_3d.iterrows():
-            coords_3d = np.array(row.geometry.exterior.coords)
-            # Get AHN elevation at each vertex
-            xy_coords = coords_3d[:, :2]
-            ahn_elevs = self.get_elevations(AHN4_API(resolution=1.0), row.geometry, xy_coords)
-            z_coords = coords_3d[:, 2]
-
-            # Case 1: Entire polygon is above AHN
-            if np.all(z_coords > ahn_elevs):
-                total_area += planar_polygon_area_3d(coords_3d)
-                continue
-
-            # Case 2: Some vertices below AHN -> clip polygon at AHN plane
-            clipped_coords = []
-            n = len(coords_3d)
-            for i in range(n):
-                curr = coords_3d[i]
-                next_pt = coords_3d[(i + 1) % n]
-                curr_z, next_z = curr[2], next_pt[2]
-                curr_ahn, next_ahn = ahn_elevs[i], ahn_elevs[(i + 1) % n]
-
-                curr_above = curr_z > curr_ahn
-                next_above = next_z > next_ahn
-
-                if curr_above:
-                    clipped_coords.append(curr.tolist())
-
-                # Edge crosses AHN plane -> compute intersection
-                if curr_above != next_above:
-                    # Linear interpolation to intersection point
-                    t = (next_ahn - curr_ahn) / ((next_z - next_ahn) - (curr_z - curr_ahn))
-                    intersection = curr + t * (next_pt - curr)
-                    clipped_coords.append(intersection.tolist())
-
-            if len(clipped_coords) >= 3:
-                total_area += planar_polygon_area_3d(clipped_coords)
 
         return {'total_3d_area_m2': total_area}

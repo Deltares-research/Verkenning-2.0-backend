@@ -105,7 +105,7 @@ print("\nCalculating volume...")
 result = dike_model.calculate_volume()
 
 print("\n=== RESULTS ===")
-print(f"Total volume: {result.get('total_volume', 0):.2f} m³")
+print(f"Net volume: {result.get('net_volume', 0):.2f} m³")
 print(f"2D above ground area: {result.get('above_ground_area', 0):.2f} m²")
 print(f"3D above ground area: {result.get('above_ground_area_3d', 0):.2f} m²")
 
