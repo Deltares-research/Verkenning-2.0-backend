@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 import numpy as np
 from pathlib import Path
@@ -17,7 +17,14 @@ from ..utils import reproject_polygon_with_z
 
 
 class GroundModel:
-    def __init__(self, design_export_3d: gpd.GeoDataFrame, grid_size: float = 0.525, excavation_mode = 'envelope'):
+    def __init__(
+        self,
+        design_export_3d: gpd.GeoDataFrame,
+        grid_size: float = 0.525,
+        excavation_mode='envelope',
+        tin_max_edge_length: Optional[float] = None,
+        tin_max_edge_factor: float = 8.0
+    ):
         '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
         two excavation modes are supported:
         - envelope: the design surface is treated as an envelope. All cells where soil is below the design surface will be supplemented. All cells where soil is above the design surface will be left as is. This is the default method and is preferable for typical soil reinforcements in order to avoid removing all on and off ramps to the dike.
@@ -29,8 +36,27 @@ class GroundModel:
         if not excavation_mode in ['envelope', 'cut_and_fill']:
             raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
         self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
+        self.tin_max_edge_length = tin_max_edge_length
+        self.tin_max_edge_factor = tin_max_edge_factor
 
         self.import_elevation_data()
+
+    def _filter_triangles_by_max_edge_length(
+        self,
+        points_xy: np.ndarray,
+        triangles: np.ndarray,
+        max_edge_length: Optional[float]
+    ) -> np.ndarray:
+        if triangles.size == 0 or max_edge_length is None or max_edge_length <= 0:
+            return triangles
+
+        tri_pts = points_xy[triangles]
+        edge01 = np.linalg.norm(tri_pts[:, 0, :] - tri_pts[:, 1, :], axis=1)
+        edge12 = np.linalg.norm(tri_pts[:, 1, :] - tri_pts[:, 2, :], axis=1)
+        edge20 = np.linalg.norm(tri_pts[:, 2, :] - tri_pts[:, 0, :], axis=1)
+        max_edge_per_triangle = np.maximum(np.maximum(edge01, edge12), edge20)
+        keep_mask = max_edge_per_triangle <= max_edge_length
+        return triangles[keep_mask]
 
     def import_elevation_data(self):
         # Combine polygons to get full extent
@@ -134,17 +160,69 @@ class GroundModel:
         """
         # It is difficult to locate the toe lijn automatically. We now assume that the surface covers the entire area of the polygon. 
         # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
-        RATIO_TOE_DIKE_TO_EXTENT = 1.0  
+        RATIO_TOE_DIKE_TO_EXTENT = 0
+
+        area = self.calculate_3d_surface_TIN(height_source='ahn')
+
+        V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
+        V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
+        S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
+        return V1b, V2b, S0
+
+    def _interpolate_design_heights_on_global_grid(self) -> np.ndarray:
+        """
+        Interpolate design-surface Z-values on the global XY grid.
+
+        :return: 1D array of interpolated design heights (NaN where unavailable)
+        """
+        design_z_global = np.full(len(self.grid_pts_global), np.nan, dtype=float)
+
+        for poly in list(self.design_export_3d.geometry):
+            path = MplPath(np.array([[x, y] for x, y, *_ in poly.exterior.coords]))
+            mask = path.contains_points(self.grid_pts_global)
+            if not np.any(mask):
+                continue
+
+            poly_coords_3d = np.array(poly.exterior.coords)
+            interpolated_z = griddata(
+                points=poly_coords_3d[:, :2],
+                values=poly_coords_3d[:, 2],
+                xi=self.grid_pts_global[mask],
+                method='linear',
+                fill_value=np.mean(poly_coords_3d[:, 2])
+            )
+            design_z_global[mask] = interpolated_z
+
+        return design_z_global
+
+    def calculate_3d_surface_TIN(self, height_source: str = 'ahn'):
 
         # Build TIN from valid AHN points
-        valid = ~np.isnan(self.elev_global)
+        if height_source not in ['ahn', 'design']:
+            raise ValueError(f"Invalid height_source: {height_source}. Must be 'ahn' or 'design'.")
+
+        if height_source == 'ahn':
+            z_values = self.elev_global
+        else:
+            z_values = self._interpolate_design_heights_on_global_grid()
+
+        valid = ~np.isnan(z_values)
         points_xy = self.grid_pts_global[valid]
-        points_z = self.elev_global[valid]
+        points_z = z_values[valid]
+
+        if len(points_xy) < 3:
+            return 0.0
 
         points_3d = np.column_stack((points_xy, points_z))  # (N,3)
         points_xy = points_3d[:, :2]
         tri = Delaunay(points_xy)
         triangles = tri.simplices  # indices of triangle vertices
+
+        max_edge_length = self.tin_max_edge_length
+        if max_edge_length is None:
+            max_edge_length = self.tin_max_edge_factor * self.grid_size
+
+        triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
 
         def triangle_area(p1, p2, p3):
             return 0.5 * np.linalg.norm(np.cross(p2 - p1, p3 - p1))
@@ -155,11 +233,7 @@ class GroundModel:
             area += triangle_area(p1, p2, p3)
 
         print("Surface area:", area)
-
-        V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
-        V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
-        S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
-        return V1b, V2b, S0
+        return area
 
     def calculate_all_dike_volumes(self, thickness_top_layer: float = 0.2, thickness_clay_layer: float = 0.8) -> dict:
         """
