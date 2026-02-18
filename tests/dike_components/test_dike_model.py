@@ -69,7 +69,7 @@ def test_dike_model_cost_computation_with_both(gdf_structure, gdf_ground):
     np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 96282.22, rtol=1e-2)
     np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies']), 417198.65, rtol=1e-2)
     np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Indirecte Bouwkosten']), 210363.63, rtol=1e-2)
-    np.testing.assert_allclose(cost_dict['Vastgoedkosten']['total_real_estate_costs'], 4522087.5, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Vastgoedkosten']['total_real_estate_costs']['value_excl_BTW'], 4522087.5, rtol=1e-2)
 
 def test_dike_model_cost_computation_with_none():
     dike_model = DikeModel(complexity='makkelijke maatregel')
