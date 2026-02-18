@@ -38,6 +38,7 @@ def parse_price(value: str) -> float:
     € 12,694.90 → 12694.90
     1.270,52    → 1270.52
     1270,52     → 1270.52
+    € 1.270     → 1270.00
     """
     if value is None:
         return None
@@ -52,6 +53,10 @@ def parse_price(value: str) -> float:
     # e.g. "1.234,56"
     if re.match(r"^\d{1,3}(\.\d{3})+,\d{1,2}$", v):
         v = v.replace(".", "").replace(",", ".")
+        return float(v)
+    # Case 1b: European format rounded to whole euros, e.g. "1.270"
+    if re.match(r"^\d{1,3}(\.\d{3})+$", v):
+        v = v.replace(".", "")
         return float(v)
 
     # Case 2: European format without thousands: "1234,56"

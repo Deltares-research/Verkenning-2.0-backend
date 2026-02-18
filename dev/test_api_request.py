@@ -191,7 +191,7 @@ if response.status_code == 200:
     result = response.json()
     print("\n=== RESULTS ===")
     print(f"\n--- Volume Calculation ---")
-    print(f"Total Volume: {result['volume']['total_volume']:.2f} m³")
+    print(f"Net Volume: {result['volume']['net_volume']:.2f} m³")
     print(f"Fill Volume: {result['volume']['fill_volume']:.2f} m³")
     print(f"Excavation Volume: {result['volume']['excavation_volume']:.2f} m³")
     print(f"Area: {result['volume']['area']:.2f} m²")

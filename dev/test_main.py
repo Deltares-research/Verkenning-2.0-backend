@@ -75,7 +75,7 @@ def test_calculate_design_volume():
     response = client.post("/api/calculate_design_volume", json=geojson_data)
     assert response.status_code == 200
     result = response.json()
-    assert "total_volume" in result
+    assert "net_volume" in result
     assert "excavation_volume" in result
     assert "fill_volume" in result
     assert result["unit"] == "m³"
@@ -103,7 +103,7 @@ def test_calculate_design_volume_with_real_data():
         response = client.post("/api/calculate_design_volume", json=geojson_data)
         assert response.status_code == 200
         result = response.json()
-        assert "total_volume" in result
+        assert "net_volume" in result
         assert "excavation_volume" in result
         assert "fill_volume" in result
         assert result["unit"] == "m³"

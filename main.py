@@ -65,7 +65,7 @@ class GeoJSONInput(BaseModel):
     crs: Optional[Dict[str, Any]] = None
 
 class VolumeCalculationResult(BaseModel):
-    total_volume: float
+    net_volume: float
     excavation_volume: float
     fill_volume: float
     area: float
@@ -90,6 +90,10 @@ class DesignCalculationResult(BaseModel):
 class DesignCostResult(BaseModel):
     breakdown: dict  # Please dont change type, Pydantic is being very annoying
 
+class VolumeCalculationRequest(BaseModel):
+    geojson: GeoJSONInput
+    excavation_mode: str = 'envelope'  # or 'cut_and_fill'
+
 class CostCalculationRequest(BaseModel):
     geojson_dike: GeoJSONInput | None = None
     geojson_structure: GeoJSONInput | None = None
@@ -100,7 +104,7 @@ class CostCalculationRequest(BaseModel):
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
 async def calculate_designs(
-    geojson: GeoJSONInput,
+    request: VolumeCalculationRequest,
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -113,12 +117,12 @@ async def calculate_designs(
     start_time = time.time()
     
     try:
-        if not geojson.features:
+        if not request.geojson.features:
             raise HTTPException(status_code=400, detail="No features provided in GeoJSON")
         
         # Convert GeoJSON to GeoDataFrame
         features = []
-        for feature in geojson.features:
+        for feature in request.geojson.features:
             geom = shape(feature.geometry)
             features.append({
                 'geometry': geom,
@@ -135,7 +139,7 @@ async def calculate_designs(
             )
         
         # Initialize GroundModel with the GeoDataFrame
-        ground_model = GroundModel(gdf)
+        ground_model = GroundModel(gdf, excavation_mode=request.excavation_mode)
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
@@ -145,31 +149,11 @@ async def calculate_designs(
         print(f"DEBUG: Result value: {result}")
         
         # If result is None, extract from ground_model attributes
-        if result is None:
-            print("DEBUG: Result is None, extracting from model attributes")
-            fill_vol = getattr(ground_model, 'total_fill_volume', 0.0)
-            cut_vol = getattr(ground_model, 'total_cut_volume', 0.0)
-            total_vol = fill_vol - cut_vol
-            area = getattr(ground_model, 'total_area', 0.0)
-            grid_pts = getattr(ground_model, 'grid_points_count', None)
-            print(f"DEBUG: Extracted - fill: {fill_vol}, cut: {cut_vol}, total: {total_vol}")
-        # Handle both tuple and dict return types
-        elif isinstance(result, tuple):
-            print(f"DEBUG: Result is tuple with length {len(result)}")
-            if len(result) >= 3:
-                fill_vol = result[0] if len(result) > 0 else 0.0
-                cut_vol = result[1] if len(result) > 1 else 0.0
-                total_vol = result[2] if len(result) > 2 else 0.0
-                area = result[3] if len(result) > 3 else 0.0
-                grid_pts = result[4] if len(result) > 4 else None
-            else:
-                fill_vol = cut_vol = total_vol = area = 0.0
-                grid_pts = None
-        elif isinstance(result, dict):
+        if isinstance(result, dict):
             print(f"DEBUG: Result is dict: {result}")
             fill_vol = result.get('fill_volume', 0.0)
             cut_vol = result.get('cut_volume', 0.0)
-            total_vol = result.get('total_volume', 0.0)
+            total_vol = result.get('net_volume', 0.0)
             area = result.get('area', 0.0)
             grid_pts = result.get('grid_points', None)
         else:
@@ -185,7 +169,7 @@ async def calculate_designs(
         
         # Build volume calculation result
         volume_calc = VolumeCalculationResult(
-            total_volume=round(total_vol, 2),
+            net_volume=round(total_vol, 2),
             excavation_volume=round(cut_vol, 2),
             fill_volume=round(fill_vol, 2),
             area=round(area, 2),
@@ -210,34 +194,6 @@ async def calculate_designs(
             status_code=500, 
             detail=f"Error calculating designs: {str(e.detail) if hasattr(e, 'detail') else str(e)}"
         )
-
-# Debug endpoint to see raw calculation result
-@app.post("/api/debug_calculate_volume")
-async def debug_calculate_volume(
-    geojson: GeoJSONInput,
-    api_key: str = Depends(verify_api_key)
-):
-    """Debug endpoint to see raw calculation result"""
-    try:
-        features = []
-        for feature in geojson.features:
-            geom = shape(feature.geometry)
-            features.append({'geometry': geom, **feature.properties})
-        
-        gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
-        dike_model = DikeModel(gdf)
-        result = dike_model.calculate_volume()
-        
-        return {
-            "result_type": str(type(result)),
-            "result": str(result),
-            "is_tuple": isinstance(result, tuple),
-            "is_dict": isinstance(result, dict),
-            "length": len(result) if isinstance(result, (tuple, list)) else None
-        }
-    except Exception as e:
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @app.post("/api/cost_calculation", response_model=DesignCostResult)

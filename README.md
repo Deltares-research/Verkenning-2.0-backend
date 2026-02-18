@@ -260,7 +260,7 @@ demo_backend/
 ```json
 {
   "volume": {
-    "total_volume": 123.45,
+    "net_volume": 123.45,
     "excavation_volume": 67.89,
     "fill_volume": 191.34,
     "area": 456.78,
