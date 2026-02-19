@@ -246,6 +246,7 @@ class GroundModel:
                         - ``'design'``: XY from global grid with Z from interpolated
                             design heights
             - ``'design_edges'``: XYZ directly from design polygon edge vertices
+            - ``design`` : XYZ taken from global grid using interpolated design heights.
         :param exclude_points_where_ahn_above_design: Only used when
             ``height_source='design'``. If ``True``, excludes grid points where
             AHN elevation is higher than interpolated design elevation.
