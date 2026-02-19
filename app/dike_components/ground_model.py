@@ -70,6 +70,31 @@ class GroundModel:
         keep_mask = max_edge_per_triangle <= max_edge_length
         return triangles[keep_mask]
 
+    def _filter_horizontal_triangles(
+        self,
+        points_3d: np.ndarray,
+        triangles: np.ndarray,
+        min_z_span: float = 1e-6
+    ) -> np.ndarray:
+        """Remove triangles that are (near-)horizontal in 3D space.
+
+        A triangle is considered horizontal when the spread in its vertex Z
+        values is smaller than or equal to ``min_z_span``.
+
+        :param points_3d: Array of XYZ coordinates with shape ``(N, 3)``.
+        :param triangles: Triangle vertex indices with shape ``(M, 3)``.
+        :param min_z_span: Minimum required ``max(z) - min(z)`` in meters for
+            a triangle to be kept.
+        :return: Filtered triangle index array.
+        """
+        if triangles.size == 0:
+            return triangles
+
+        tri_pts = points_3d[triangles]
+        z_span = np.ptp(tri_pts[:, :, 2], axis=1)
+        keep_mask = z_span > min_z_span
+        return triangles[keep_mask]
+
     def import_elevation_data(self):
         # Combine polygons to get full extent
         combined_poly = unary_union(self.design_export_3d["geometry"])
@@ -174,7 +199,7 @@ class GroundModel:
         # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
         RATIO_TOE_DIKE_TO_EXTENT = 0
 
-        area = self.calculate_3d_surface_TIN(height_source='ahn')
+        area = self.calculate_3d_surface_TIN(height_source='ahn')['area']
 
         V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
         V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
@@ -207,38 +232,92 @@ class GroundModel:
 
         return design_z_global
 
-    def calculate_3d_surface_TIN(self, height_source: str = 'ahn') -> float:
+    def calculate_3d_surface_TIN(
+        self,
+        height_source: str = 'ahn',
+        exclude_points_where_ahn_above_design: bool = False
+    ) -> dict:
         """
         Calculate the 3d surface area using a TIN method. This method uses a special interpolation technique to
         compute area for a non-planar surface. It is computationally more expensive however.
 
-        params: height_source: calculate the area of either the AHN surface or the design surface.
+        :param height_source: Source used to build TIN points:
+            - ``'ahn'``: XY from global grid with Z from AHN elevations
+                        - ``'design'``: XY from global grid with Z from interpolated
+                            design heights
+            - ``'design_edges'``: XYZ directly from design polygon edge vertices
+        :param exclude_points_where_ahn_above_design: Only used when
+            ``height_source='design'``. If ``True``, excludes grid points where
+            AHN elevation is higher than interpolated design elevation.
+        :return: Dictionary with ``area`` (float, m²), ``triangles``
+            (``np.ndarray`` with shape ``(M, 3)``), and ``points_3d``
+            (``np.ndarray`` with shape ``(N, 3)``).
         """
 
         # Build TIN from valid AHN points
-        if height_source not in ['ahn', 'design']:
-            raise ValueError(f"Invalid height_source: {height_source}. Must be 'ahn' or 'design'.")
+        if height_source not in ['ahn', 'design', 'design_edges']:
+            raise ValueError(
+                f"Invalid height_source: {height_source}. Must be 'ahn', 'design' or 'design_edges'."
+            )
 
-        if height_source == 'ahn':
+        if height_source == 'design_edges':
+            edge_points_3d = []
+            for poly in list(self.design_export_3d.geometry):
+                coords_3d = np.array(poly.exterior.coords)
+                if len(coords_3d) > 1 and np.allclose(coords_3d[0], coords_3d[-1]):
+                    coords_3d = coords_3d[:-1]
+                edge_points_3d.extend(coords_3d.tolist())
+
+            if len(edge_points_3d) < 3:
+                return {
+                    'area': 0.0,
+                    'triangles': np.empty((0, 3), dtype=int),
+                    'points_3d': np.empty((0, 3), dtype=float)
+                }
+
+            points_3d = np.array(edge_points_3d, dtype=float)
+        elif height_source == 'ahn':
             z_values = self.elev_global
-        else:
+            valid = ~np.isnan(z_values)
+            points_xy = self.grid_pts_global[valid]
+            points_z = z_values[valid]
+            if len(points_xy) < 3:
+                return {
+                    'area': 0.0,
+                    'triangles': np.empty((0, 3), dtype=int),
+                    'points_3d': np.empty((0, 3), dtype=float)
+                }
+            points_3d = np.column_stack((points_xy, points_z))  # (N,3)
+        else:  # design on global XY grid
             z_values = self._interpolate_design_heights_on_global_grid()
+            valid = ~np.isnan(z_values)
 
-        valid = ~np.isnan(z_values)
-        points_xy = self.grid_pts_global[valid]
-        points_z = z_values[valid]
+            if exclude_points_where_ahn_above_design:
+                ahn_valid = ~np.isnan(self.elev_global)
+                valid = valid & ahn_valid & (self.elev_global <= z_values)
 
-        if len(points_xy) < 3:
-            return 0.0
+            points_xy = self.grid_pts_global[valid]
+            points_z = z_values[valid]
+            if len(points_xy) < 3:
+                return {
+                    'area': 0.0,
+                    'triangles': np.empty((0, 3), dtype=int),
+                    'points_3d': np.empty((0, 3), dtype=float)
+                }
+            points_3d = np.column_stack((points_xy, points_z))  # (N,3)
 
-        points_3d = np.column_stack((points_xy, points_z))  # (N,3)
+
         points_xy = points_3d[:, :2]
         tri = Delaunay(points_xy)
         triangles = tri.simplices  # indices of triangle vertices
 
-        max_edge_length = 8 * self.grid_size  # is the largest edge is 8 times bigger than the grid size, we consider it an unrealistic triangle that spans a gap in the data, and we remove it from the area calculation. This is a heuristic that can be adjusted based on the expected data quality and point density.
-        
-        triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
+
+        if height_source == 'design_edges':
+            triangles = self._filter_horizontal_triangles(points_3d, triangles)
+        elif height_source in ['ahn', 'design']:
+            max_edge_length = 8 * self.grid_size  # is the largest edge is 8 times bigger than the grid size, we consider it an unrealistic triangle that spans a gap in the data, and we remove it from the area calculation.
+            triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
+
 
         def triangle_area(p1, p2, p3):
             return 0.5 * np.linalg.norm(np.cross(p2 - p1, p3 - p1))
@@ -249,7 +328,11 @@ class GroundModel:
             area += triangle_area(p1, p2, p3)
 
         print("Surface area:", area)
-        return area
+        return {
+            'area': area,
+            'triangles': triangles,
+            'points_3d': points_3d
+        }
 
     def calculate_all_dike_volumes(self, thickness_top_layer: float = 0.2, thickness_clay_layer: float = 0.8) -> dict:
         """

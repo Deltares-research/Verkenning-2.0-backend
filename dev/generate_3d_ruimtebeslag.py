@@ -613,7 +613,7 @@ def plot_payload_polygons_3d_plotly(payload_data: dict, title: str = "Payload po
 
 # Convert GeoJSON to GeoDataFrame
 features = []
-active_payload = payload2
+active_payload = payload3
 for feature in active_payload['geojson']['features']:
     geom = shape(feature['geometry'])
     features.append({
@@ -682,12 +682,20 @@ print("2D ruimtebeslag)", ruimtebeslag_result["total_area_m2"])
 # dict = ground_model.calculate_all_dike_volumes()
 # print(dict)
 
-
-method1 = ground_model.calculate_3d_surface_TIN(height_source='design')
+ahn_surface_area = ground_model.calculate_3d_surface_TIN(height_source='ahn')
+# method1 = ground_model.calculate_3d_surface_TIN(height_source='design')
+# design_edge_triangles1 = method1.get('triangles', np.empty((0, 3), dtype=int))
 method2 = ground_model.calculate_total_3d_surface_area()['total_3d_area_m2']
+method3 = ground_model.calculate_3d_surface_TIN(height_source='design_edges')
+design_edge_triangles3 = method3.get('triangles', np.empty((0, 3), dtype=int))
+design_edge_points_3d = method3.get('points_3d', np.empty((0, 3), dtype=float))
 
-print("TIN design:", method1, " =3D area of design")
+design_edge_triangles = design_edge_triangles3
+
+# print("TIN design:", method1['area'], " =3D area of design")
 print("Newells design:", method2, " =3D area of design")
+print("TIN design method 3", method3['area'])
+print("TIN ahn area", ahn_surface_area['area'])
 
 
 valid = ~np.isnan(ground_model.elev_global)
@@ -703,10 +711,7 @@ triangle_areas = np.array([], dtype=float)
 
 if points_xy.shape[0] >= 3:
   try:
-    tri = Delaunay(points_xy)
-    triangles = tri.simplices  # indices of triangle vertices
-    max_edge_length = TIN_MAX_EDGE_FACTOR * ground_model.grid_size
-    triangles = filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
+    triangles = design_edge_triangles # indices of triangle vertices
 
     if triangles.size > 0:
       p0 = points_xy[triangles[:, 0]]
@@ -761,6 +766,20 @@ else:
     s=8,
     alpha=0.9
   )
+
+  # Overlay design-edge TIN triangles returned by GroundModel
+  if design_edge_points_3d.size > 0 and design_edge_triangles.size > 0:
+    ax.plot_trisurf(
+      design_edge_points_3d[:, 0],
+      design_edge_points_3d[:, 1],
+      design_edge_points_3d[:, 2],
+      triangles=design_edge_triangles,
+      color='deepskyblue',
+      alpha=0.18,
+      linewidth=0.0,
+      antialiased=True,
+      shade=True
+    )
 
   # Overlay the 3 largest triangles from the point cloud triangulation
   for rank, tri_idx in enumerate(largest_triangle_indices, start=1):
