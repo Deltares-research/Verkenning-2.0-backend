@@ -66,7 +66,7 @@ def test_2d_ruimtebeslag(gdf_ground_cut_and_fill):
     newells_method = ground_model.calculate_total_3d_surface_area()['total_3d_area_m2'] # 3D area of the design surface with Newell analytical method
     TIN_method = ground_model.calculate_3d_surface_TIN(height_source='design_edges')['area']  # 3D area of the design surface with TIN method
 
-    ruimtebelsag_3d_area = ground_model.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']  # discretized input
+    ruimtebelsag_3d_area = ground_model.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']  # 3D area of the design surface where design > AHN
 
 
     assert footprint_2d_area > ruimtebelsag_2d_area
