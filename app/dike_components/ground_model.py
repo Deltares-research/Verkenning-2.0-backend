@@ -22,8 +22,6 @@ class GroundModel:
         design_export_3d: gpd.GeoDataFrame,
         grid_size: float = 0.525,
         excavation_mode='envelope',
-        tin_max_edge_length: Optional[float] = None,
-        tin_max_edge_factor: float = 8.0
     ):
         '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
         two excavation modes are supported:
@@ -36,8 +34,6 @@ class GroundModel:
         if not excavation_mode in ['envelope', 'cut_and_fill']:
             raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
         self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
-        self.tin_max_edge_length = tin_max_edge_length
-        self.tin_max_edge_factor = tin_max_edge_factor
 
         self.import_elevation_data()
 
@@ -47,6 +43,22 @@ class GroundModel:
         triangles: np.ndarray,
         max_edge_length: Optional[float]
     ) -> np.ndarray:
+        """Filter Delaunay triangles by a maximum allowed edge length.
+
+        Triangles are retained only when their longest edge is smaller than or
+        equal to ``max_edge_length``. This helps remove unrealistically large
+        triangles that can span gaps in sparse or irregular point clouds and
+        would otherwise bias area estimates.
+
+        :param points_xy: Array of point coordinates with shape ``(N, 2)``.
+            Indices referenced by ``triangles`` must exist in this array.
+        :param triangles: Triangle vertex indices with shape ``(M, 3)``,
+            typically from ``scipy.spatial.Delaunay(...).simplices``.
+        :param max_edge_length: Maximum allowed triangle edge length in meters.
+            If ``None`` or ``<= 0``, no filtering is applied.
+        :return: Filtered triangle index array with the same column structure
+            as input ``triangles``.
+        """
         if triangles.size == 0 or max_edge_length is None or max_edge_length <= 0:
             return triangles
 
@@ -224,10 +236,8 @@ class GroundModel:
         tri = Delaunay(points_xy)
         triangles = tri.simplices  # indices of triangle vertices
 
-        max_edge_length = self.tin_max_edge_length
-        if max_edge_length is None:
-            max_edge_length = self.tin_max_edge_factor * self.grid_size
-
+        max_edge_length = 8 * self.grid_size  # is the largest edge is 8 times bigger than the grid size, we consider it an unrealistic triangle that spans a gap in the data, and we remove it from the area calculation. This is a heuristic that can be adjusted based on the expected data quality and point density.
+        
         triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
 
         def triangle_area(p1, p2, p3):
