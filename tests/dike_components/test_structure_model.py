@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
 from app.dike_components.dike_model import DikeModel
 import geopandas as gpd
@@ -6,10 +8,13 @@ import pytest
 import numpy as np
 
 
+TEST_DATA_DIR = Path(__file__).resolve().parent.parent / "test_data"
+
+
 @pytest.fixture(scope="module")
 def gdf_structure():
     #default output is Onverankerde damwand
-    return gpd.read_file('tests/test_data/test_damwand_input_lines_with_properties.geojson')
+    return gpd.read_file(TEST_DATA_DIR / "test_damwand_input_lines_with_properties.geojson")
 
 
 #test for checking if gdf is read correctly
