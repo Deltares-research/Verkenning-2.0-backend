@@ -245,9 +245,10 @@ class GroundModel:
                             design heights
             - ``'design_edges'``: XYZ directly from design polygon edge vertices
             - ``design`` : XYZ taken from global grid using interpolated design heights.
-        :param exclude_points_where_ahn_above_design: Only used when
-            ``height_source='design'``. If ``True``, excludes grid points where
-            AHN elevation is higher than interpolated design elevation.
+        :param exclude_points_where_ahn_above_design: Used when
+            ``height_source`` is ``'design'`` or ``'ahn'``. If ``True``,
+            excludes grid points where AHN elevation is higher than
+            interpolated design elevation.
         :return: Dictionary with ``area`` (float, m²), ``triangles``
             (``np.ndarray`` with shape ``(M, 3)``), and ``points_3d``
             (``np.ndarray`` with shape ``(N, 3)``).
@@ -278,6 +279,12 @@ class GroundModel:
         elif height_source == 'ahn':
             z_values = self.elev_global
             valid = ~np.isnan(z_values)
+
+            if exclude_points_where_ahn_above_design:
+                design_z_values = self._interpolate_design_heights_on_global_grid()
+                design_valid = ~np.isnan(design_z_values)
+                valid = valid & design_valid & (z_values <= design_z_values)
+
             points_xy = self.grid_pts_global[valid]
             points_z = z_values[valid]
             if len(points_xy) < 3:
@@ -347,6 +354,8 @@ class GroundModel:
 
 
         ##### Calculate filling volumes V3, V4, V5:
+        full_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn')['area']
+
         V3, V4, V5 = self.calculate_volume_v3_v4_v5(thickness_top_layer=thickness_top_layer,
                                                     thickness_clay_layer=thickness_clay_layer)
 
