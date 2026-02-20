@@ -1,8 +1,6 @@
 from pathlib import Path
 
-from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
 from app.dike_components.dike_model import DikeModel
-from app.dike_components.ground_model import GroundModel
 import geopandas as gpd
 
 import pytest
@@ -55,8 +53,21 @@ def test_area_ahn_surface(gdf_ground):
     expected_tin = 2931.5755344605736
     assert TIN_method == pytest.approx(expected_tin, rel=1e-9)
 
+def test_ahn_full_and_envelop(gdf_ground_cut_and_fill):
+    dike_model = DikeModel(_3d_ground_polygon = gdf_ground_cut_and_fill)
+    ground_model = dike_model.ground_model
 
-def test_2d_ruimtebeslag(gdf_ground_cut_and_fill):
+    full_AHN_surface = ground_model.calculate_3d_surface_TIN(height_source='ahn')['area']
+    envelop_AHN_surface = ground_model.calculate_3d_surface_TIN(height_source='ahn', exclude_points_where_ahn_above_design=True)['area']
+
+    EXPECTED_FULL_AHN_SURFACE = 2420.3946451200713
+    EXPECTED_ENVELOP_AHN_SURFACE = 1833.5222930868551
+
+    assert full_AHN_surface == pytest.approx(EXPECTED_FULL_AHN_SURFACE, rel=1e-9)
+    assert envelop_AHN_surface == pytest.approx(EXPECTED_ENVELOP_AHN_SURFACE, rel=1e-9)
+    assert full_AHN_surface > envelop_AHN_surface
+
+def test_2d_3d_ruimtebeslag(gdf_ground_cut_and_fill):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground_cut_and_fill)
     ground_model = dike_model.ground_model
 
@@ -74,6 +85,16 @@ def test_2d_ruimtebeslag(gdf_ground_cut_and_fill):
     assert ruimtebelsag_3d_area > ruimtebelsag_2d_area
     assert ruimtebelsag_3d_area < newells_method
 
+
+def test_V3_V4_V5(gdf_ground):
+    dike_model = DikeModel(_3d_ground_polygon = gdf_ground)
+    ground_model = dike_model.ground_model
+    volumes = ground_model.calculate_volume_v3_v4_v5()
+    print(volumes)
+    #allclose for volumes rtol = 1e-2
+    assert volumes[0] == pytest.approx(580.2130483053766, rel=1e-2)  # V3
+    assert volumes[1] == pytest.approx(1936.658976091931, rel=1e-2)  # V4
+    assert volumes[2] == pytest.approx(790.5119182568828, rel=1e-2)  # V5
 
 
 

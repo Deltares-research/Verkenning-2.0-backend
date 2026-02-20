@@ -11,17 +11,15 @@ from shapely.ops import unary_union
 import geopandas as gpd
 
 from ..AHN_raster_API import AHN4_API
-from ..cost_calculator import CostCalculator
-from ..unit_costs_and_surcharges import load_kosten_catalogus
 from ..utils import reproject_polygon_with_z
 
 
 class GroundModel:
     def __init__(
-        self,
-        design_export_3d: gpd.GeoDataFrame,
-        grid_size: float = 0.525,
-        excavation_mode='envelope',
+            self,
+            design_export_3d: gpd.GeoDataFrame,
+            grid_size: float = 0.525,
+            excavation_mode='envelope',
     ):
         '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
         two excavation modes are supported:
@@ -33,15 +31,15 @@ class GroundModel:
         self.design_export_3d["geometry"] = self.design_export_3d["geometry"].apply(reproject_polygon_with_z)
         if not excavation_mode in ['envelope', 'cut_and_fill']:
             raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
-        self.excavation_mode = excavation_mode #cut_and_fill or envelope. 
+        self.excavation_mode = excavation_mode  # cut_and_fill or envelope.
 
         self.import_elevation_data()
 
     def _filter_triangles_by_max_edge_length(
-        self,
-        points_xy: np.ndarray,
-        triangles: np.ndarray,
-        max_edge_length: Optional[float]
+            self,
+            points_xy: np.ndarray,
+            triangles: np.ndarray,
+            max_edge_length: Optional[float]
     ) -> np.ndarray:
         """Filter Delaunay triangles by a maximum allowed edge length.
 
@@ -71,10 +69,10 @@ class GroundModel:
         return triangles[keep_mask]
 
     def _filter_horizontal_triangles(
-        self,
-        points_3d: np.ndarray,
-        triangles: np.ndarray,
-        min_z_span: float = 1e-6
+            self,
+            points_3d: np.ndarray,
+            triangles: np.ndarray,
+            min_z_span: float = 1e-6
     ) -> np.ndarray:
         """Remove triangles that are (near-)horizontal in 3D space.
 
@@ -104,7 +102,6 @@ class GroundModel:
 
         # 3) Get the AHN elevations for the grid
         self.elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, self.grid_pts_global)
-
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -155,15 +152,19 @@ class GroundModel:
         self.elevation = elev
         return elev
 
-    def calculate_volume_v3_v4_v5(self, 
+    def calculate_volume_v3_v4_v5(self,
                                   thickness_top_layer: float = 0.2,
-                                  thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
+                                  thickness_clay_layer: float = 0.8,
+                                  ) -> tuple[float, float, float]:
 
         """
         Compute the following volumes:
             - V3: volume of top layer fill (0.2m thick)
             - V4: volume of clay layer fill (0.8m thick)
             - V5: volume of sand layer fill (remaining volume below clay layer and above the current AHN surface)
+
+        The computed volumes are made for the envelop of the design!! Because the method self.calculate_volume_below_surface
+        applies a mask where AHN > design
         """
 
         clay_layer_top_surface = []
@@ -171,11 +172,22 @@ class GroundModel:
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
         for row in list(self.design_export_3d.geometry):
-            clay_layer_top_surface.append(Polygon([(x, y, z - thickness_top_layer) for x, y, z in row.exterior.coords]))
-            sand_layer_top_surface.append(
-                Polygon([(x, y, z - thickness_top_layer - thickness_clay_layer) for x, y, z in row.exterior.coords]))
+            coords = np.array(row.exterior.coords)
+            xy = coords[:, :2]
+            z_vals = coords[:, 2]
 
-        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get('fill_volume')
+            clay_layer_top_surface.append(
+                Polygon([(x, y, z - thickness_top_layer) for (x, y), z in zip(xy, z_vals)])
+            )
+            sand_layer_top_surface.append(
+                Polygon([
+                    (x, y, z - thickness_top_layer - thickness_clay_layer)
+                    for (x, y), z in zip(xy, z_vals)
+                ])
+            )
+
+        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get(
+            'fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
 
@@ -185,8 +197,8 @@ class GroundModel:
 
         return V3, V4, V5
 
-    def calculate_volume_v1b_v2b(self, thickness_top_layer: float = 0.2,
-                                 thickness_clay_layer: float = 0.8) -> tuple[float, float, float]:
+    def calculate_volume_v1b_v2b(self, area_ahn_profile: float, thickness_top_layer: float = 0.2,
+                                 thickness_clay_layer: float = 0.8) -> tuple[float, float]:
         """
         Compute re-usable volumes:
             - V1b
@@ -197,12 +209,9 @@ class GroundModel:
         """
         # Currently we assume that the entire area where there will be works is identical and has to be cleared and excavated in the same way. A future improvement could be to distinguish the part that is on the existing dike (with clear top, clay layers) and the part that is behind it
 
-        area = self.calculate_3d_surface_TIN(height_source='ahn')['area']
-
-        V1b = area * thickness_top_layer
-        V2b = area * thickness_clay_layer
-        S0 = area
-        return V1b, V2b, S0
+        V1b = area_ahn_profile * thickness_top_layer
+        V2b = area_ahn_profile * thickness_clay_layer
+        return V1b, V2b
 
     def _interpolate_design_heights_on_global_grid(self) -> np.ndarray:
         """
@@ -231,9 +240,9 @@ class GroundModel:
         return design_z_global
 
     def calculate_3d_surface_TIN(
-        self,
-        height_source: str = 'ahn',
-        exclude_points_where_ahn_above_design: bool = False
+            self,
+            height_source: str = 'ahn',
+            exclude_points_where_ahn_above_design: bool = False
     ) -> dict:
         """
         Calculate the 3d surface area using a TIN method. This method uses a special interpolation technique to
@@ -245,9 +254,10 @@ class GroundModel:
                             design heights
             - ``'design_edges'``: XYZ directly from design polygon edge vertices
             - ``design`` : XYZ taken from global grid using interpolated design heights.
-        :param exclude_points_where_ahn_above_design: Only used when
-            ``height_source='design'``. If ``True``, excludes grid points where
-            AHN elevation is higher than interpolated design elevation.
+        :param exclude_points_where_ahn_above_design: Used when
+            ``height_source`` is ``'design'`` or ``'ahn'``. If ``True``,
+            excludes grid points where AHN elevation is higher than
+            interpolated design elevation.
         :return: Dictionary with ``area`` (float, m²), ``triangles``
             (``np.ndarray`` with shape ``(M, 3)``), and ``points_3d``
             (``np.ndarray`` with shape ``(N, 3)``).
@@ -278,6 +288,12 @@ class GroundModel:
         elif height_source == 'ahn':
             z_values = self.elev_global
             valid = ~np.isnan(z_values)
+
+            if exclude_points_where_ahn_above_design:
+                design_z_values = self._interpolate_design_heights_on_global_grid()
+                design_valid = ~np.isnan(design_z_values)
+                valid = valid & design_valid & (z_values <= design_z_values)
+
             points_xy = self.grid_pts_global[valid]
             points_z = z_values[valid]
             if len(points_xy) < 3:
@@ -305,18 +321,15 @@ class GroundModel:
                 }
             points_3d = np.column_stack((points_xy, points_z))  # (N,3)
 
-
         points_xy = points_3d[:, :2]
         tri = Delaunay(points_xy)
         triangles = tri.simplices  # indices of triangle vertices
-
 
         if height_source == 'design_edges':
             triangles = self._filter_horizontal_triangles(points_3d, triangles)
         elif height_source in ['ahn', 'design']:
             max_edge_length = 8 * self.grid_size  # is the largest edge is 8 times bigger than the grid size, we consider it an unrealistic triangle that spans a gap in the data, and we remove it from the area calculation.
             triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
-
 
         def triangle_area(p1, p2, p3):
             return 0.5 * np.linalg.norm(np.cross(p2 - p1, p3 - p1))
@@ -341,21 +354,32 @@ class GroundModel:
         V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
-        S0 = volumes['S0']  # surface area beyond the toe of the old dike
-        S5: # surface area of the new dike design
+
+
         """
 
+        full_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn')[
+            'area']  # This is the area of the 3D surface of the AHN profile under the entire design footprint
 
-        ##### Calculate filling volumes V3, V4, V5:
-        V3, V4, V5 = self.calculate_volume_v3_v4_v5(thickness_top_layer=thickness_top_layer,
-                                                    thickness_clay_layer=thickness_clay_layer)
+        envelop_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn',
+                                                            exclude_points_where_ahn_above_design=True)['area']  # this is the area of the 3D surface of the AHN profile where AHN is below the design surface
+
+        full_design_surface = self.calculate_total_3d_surface_area().get(
+            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
 
         #### Calculate re-useable volumes 1b and 2b:
-        V1b, V2b, S0 = self.calculate_volume_v1b_v2b(thickness_top_layer=thickness_top_layer,
-                                                     thickness_clay_layer=thickness_clay_layer)
+        V1b, V2b = self.calculate_volume_v1b_v2b(thickness_top_layer=thickness_top_layer,
+                                                 thickness_clay_layer=thickness_clay_layer,
+                                                 area_ahn_profile=envelop_AHN_surface
+                                                 )
 
-        S5 = self.calculate_total_3d_surface_area().get(
-            'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
+        #### Calculate V3, V4, V5 based on Envelop design
+        ruimtebeslag_2d_result = self.calculate_ruimtebeslag_2d()
+        ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
+        envelop_design_surface = self.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']
+        V3, V4, V5 = self.calculate_volume_v3_v4_v5(
+            thickness_top_layer=thickness_top_layer,
+            thickness_clay_layer=thickness_clay_layer)
 
         return {
             'V1b': V1b,
@@ -363,8 +387,10 @@ class GroundModel:
             'V3': V3,
             'V4': V4,
             'V5': V5,
-            'S0': S0,
-            'S5': S5
+            'full_AHN_surface': full_AHN_surface,
+            'envelop_AHN_surface': envelop_AHN_surface,
+            'full_design_surface': full_design_surface,
+            'envelop_design_surface': envelop_design_surface
         }
 
     def calculate_volume(self):
@@ -449,16 +475,17 @@ class GroundModel:
             'area': len(self.grid_pts_global) * (self.grid_size ** 2),
             'grid_points': len(self.grid_pts_global)
         }
+
     def cut_and_fill_volume_and_area(self, dV: np.ndarray) -> dict:
         fill = np.sum(dV[dV > 0] * self.grid_size ** 2)
         cut = np.sum(-dV[dV < 0] * self.grid_size ** 2)
         return fill, cut
-    
+
     def get_envelope_volume_and_area(self, dV: np.ndarray) -> dict:
         fill = np.sum(np.maximum(dV, 0) * self.grid_size ** 2)
         cut = 0.0  # No excavation in envelope mode
         return fill, cut
-    
+
     def calculate_ruimtebeslag_2d(self, alpha: float = 5.0):
         """
         Calculate the 2D ruimtebeslag (footprint area) where design is above ground.
@@ -476,7 +503,13 @@ class GroundModel:
 
         if valid_count == 0:
             print("⚠️  ERROR: NO VALID ELEVATION DATA!")
-            return {'type': 'FeatureCollection', 'features': [], 'total_area_m2': 0.0, 'num_polygons': 0}
+            return {
+                'type': 'FeatureCollection',
+                'features': [],
+                'total_area_m2': 0.0,
+                'num_polygons': 0,
+                'polygons_rd': []
+            }
 
         # 4) Precompute masks for each polygon
         masks = []
@@ -525,7 +558,13 @@ class GroundModel:
 
         if len(above_ground_points) < 3:
             print("⚠️  Not enough points above ground to create polygon")
-            return {'type': 'FeatureCollection', 'features': [], 'total_area_m2': 0.0, 'num_polygons': 0}
+            return {
+                'type': 'FeatureCollection',
+                'features': [],
+                'total_area_m2': 0.0,
+                'num_polygons': 0,
+                'polygons_rd': []
+            }
 
         # 6) Create alpha shape (concave hull) around above-ground points
         try:
@@ -595,6 +634,7 @@ class GroundModel:
                 },
                 'total_area_m2': round(total_area, 2),
                 'num_polygons': len(features),
+                'polygons_rd': polygons,
                 'points_above_ground': above_ground_points
             }
 
@@ -603,7 +643,13 @@ class GroundModel:
             print(f"Error creating alpha shape: {e}")
             import traceback
             traceback.print_exc()
-            return {'type': 'FeatureCollection', 'features': [], 'total_area_m2': 0.0, 'num_polygons': 0}
+            return {
+                'type': 'FeatureCollection',
+                'features': [],
+                'total_area_m2': 0.0,
+                'num_polygons': 0,
+                'polygons_rd': []
+            }
 
     def calculate_total_3d_surface_area(self):
         """
