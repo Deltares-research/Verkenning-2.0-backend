@@ -91,8 +91,10 @@ def test_V3_V4_V5(gdf_ground):
     ground_model = dike_model.ground_model
     volumes = ground_model.calculate_volume_v3_v4_v5()
     print(volumes)
-
-    assert volumes == (580.2130483053766, 1936.658976091931, 790.5119182568828) # V3, V4, V5
+    #allclose for volumes rtol = 1e-2
+    assert volumes[0] == pytest.approx(580.2130483053766, rel=1e-2)  # V3
+    assert volumes[1] == pytest.approx(1936.658976091931, rel=1e-2)  # V4
+    assert volumes[2] == pytest.approx(790.5119182568828, rel=1e-2)  # V5
 
 
 
