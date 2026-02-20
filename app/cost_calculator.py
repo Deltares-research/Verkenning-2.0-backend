@@ -560,20 +560,6 @@ class CostCalculator:
         """
         Calculate the benoemde directe bouwkosten for ground work based on volumes and unit prices.
         """
-        Q_GV010 = self.unit_price_dict['Q-GV010'].price
-        Q_GV030 = self.unit_price_dict['Q-GV030'].price
-        Q_GV050 = self.unit_price_dict['Q-GV050'].price
-        Q_GV060 = self.unit_price_dict['Q-GV060'].price
-        Q_GV070 = self.unit_price_dict['Q-GV070'].price
-        Q_GV080 = self.unit_price_dict['Q-GV080'].price
-        Q_GV090 = self.unit_price_dict['Q-GV090'].price
-        Q_GV100 = self.unit_price_dict['Q-GV100'].price
-        Q_GV110 = self.unit_price_dict['Q-GV110'].price
-        Q_GV120 = self.unit_price_dict['Q-GV120'].price
-        Q_AW010 = self.unit_price_dict['Q-AW010'].price
-        Q_AW020 = self.unit_price_dict['Q-AW020'].price
-        Q_AW030 = self.unit_price_dict['Q-AW030'].price
-
 
         V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt) - BASED ON envelop_AHN_surface
         V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal) - BASED ON envelop_AHN_surface
@@ -581,7 +567,7 @@ class CostCalculator:
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk - BASED ON envelop_design_surface
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk - BASED ON envelop_design_surface
         full_AHN_surface = volumes['full_AHN_surface'] # m2
-        envelop_AHN_surface = volumes['envelop_AHN_surface'] # m2
+        envelop_AHN_surface = volumes['envelop_AHN_surface'] # m2 used indirectly in V1b and V2b
         full_design_surface = volumes['full_design_surface'] # m2
         envelop_design_surface = volumes['envelop_design_surface'] # m2
 

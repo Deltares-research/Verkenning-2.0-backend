@@ -89,12 +89,10 @@ def test_2d_3d_ruimtebeslag(gdf_ground_cut_and_fill):
 def test_V3_V4_V5(gdf_ground):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground)
     ground_model = dike_model.ground_model
-    ruimtebeslag_2d_result = ground_model.calculate_ruimtebeslag_2d()
-    ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
-    volumes = ground_model.calculate_volume_v3_v4_v5(base_surface=ruimte_2dbeslag_polygons)
+    volumes = ground_model.calculate_volume_v3_v4_v5()
     print(volumes)
 
-    assert volumes == (570.3321477474838, 1840.0080592274949, 741.8571173331043) # V3, V4, V5
+    assert volumes == (580.2130483053766, 1936.658976091931, 790.5119182568828) # V3, V4, V5
 
 
 

@@ -153,7 +153,6 @@ class GroundModel:
         return elev
 
     def calculate_volume_v3_v4_v5(self,
-                                  base_surface: list[Polygon],
                                   thickness_top_layer: float = 0.2,
                                   thickness_clay_layer: float = 0.8,
                                   ) -> tuple[float, float, float]:
@@ -164,41 +163,18 @@ class GroundModel:
             - V4: volume of clay layer fill (0.8m thick)
             - V5: volume of sand layer fill (remaining volume below clay layer and above the current AHN surface)
 
-        :params:
-            - base_surface: Surface for which we compute volume underneath (either full or envelop from the design surface)
+        The computed volumes are made for the envelop of the design!! Because the method self.calculate_volume_below_surface
+        applies a mask where AHN > design
         """
 
         clay_layer_top_surface = []
         sand_layer_top_surface = []
-        base_surface_3d = []
-
-        design_vertices = [
-            np.array(poly.exterior.coords)
-            for poly in list(self.design_export_3d.geometry)
-        ]
-        design_xy = np.vstack([coords[:, :2] for coords in design_vertices])
-        design_z = np.concatenate([coords[:, 2] for coords in design_vertices])
-        design_z_fallback = float(np.mean(design_z))
 
         # Create the surfaces for the top of the clay layer and top layer based on the design surface.
-        for row in list(base_surface):
+        for row in list(self.design_export_3d.geometry):
             coords = np.array(row.exterior.coords)
             xy = coords[:, :2]
-
-            if coords.shape[1] >= 3:
-                z_vals = coords[:, 2]
-            else:
-                z_vals = griddata(
-                    points=design_xy,
-                    values=design_z,
-                    xi=xy,
-                    method='linear',
-                    fill_value=design_z_fallback
-                )
-
-            base_surface_3d.append(
-                Polygon([(x, y, z) for (x, y), z in zip(xy, z_vals)])
-            )
+            z_vals = coords[:, 2]
 
             clay_layer_top_surface.append(
                 Polygon([(x, y, z - thickness_top_layer) for (x, y), z in zip(xy, z_vals)])
@@ -210,7 +186,7 @@ class GroundModel:
                 ])
             )
 
-        volume_below_design_surface = self.calculate_volume_below_surface(base_surface_3d).get(
+        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get(
             'fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
@@ -382,7 +358,6 @@ class GroundModel:
 
         """
 
-        ##### Calculate filling volumes V3, V4, V5:
         full_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn')[
             'area']  # This is the area of the 3D surface of the AHN profile under the entire design footprint
 
@@ -401,9 +376,8 @@ class GroundModel:
         #### Calculate V3, V4, V5 based on Envelop design
         ruimtebeslag_2d_result = self.calculate_ruimtebeslag_2d()
         ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
-        envelop_design_surface = ruimtebeslag_2d_result['total_area_m2']
+        envelop_design_surface = self.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']
         V3, V4, V5 = self.calculate_volume_v3_v4_v5(
-            base_surface=ruimte_2dbeslag_polygons,
             thickness_top_layer=thickness_top_layer,
             thickness_clay_layer=thickness_clay_layer)
 
