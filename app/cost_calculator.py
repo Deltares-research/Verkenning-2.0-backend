@@ -581,13 +581,13 @@ class CostCalculator:
         V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
         V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
         S0 = volumes['S0']  # surface area on the old dike that needs to be cleared and mowed 
-        S5 = volumes['S5']  # surface area beyond the toe of the old dike. 
+        S5 = volumes['S5']  # surface area of the new dike body. 
 
 
         
         ### Combine to get costs
-        kosten_opruimen             = self.build_cost_item(S0+S5, 'Q-AW010', 'm2') # opruimen terrein
-        kosten_maaien               = self.build_cost_item(S0+S5, 'Q-AW020', 'm2')  # maaien terrein
+        kosten_opruimen             = self.build_cost_item(S0, 'Q-AW010', 'm2') # opruimen terrein
+        kosten_maaien               = self.build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
         afgraven_toplaag            = self.build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
         afgraven_oud_materiaal      = self.build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!
         hergebruik_oud_materiaal    = self.build_cost_item(V2b, 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern #TODO CHECK!

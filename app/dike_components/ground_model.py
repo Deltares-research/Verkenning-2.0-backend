@@ -191,19 +191,17 @@ class GroundModel:
         Compute re-usable volumes:
             - V1b
             - V2b
-            - S0: surface area beyond the toe of the old dike
+            - S0: surface area where the reinforcement will take place
         Assumption is made to determine where the toe location of the old dike is located.
         The volume V1b and V2b are calculated based on the surface area of the current AHN surface, times the thickness of each layers.
         """
-        # It is difficult to locate the toe lijn automatically. We now assume that the surface covers the entire area of the polygon. 
-        # A future improvement would be to use a 2D toe line to determine the area of the current dike profile where soil needs to be excavated.
-        RATIO_TOE_DIKE_TO_EXTENT = 0
+        # Currently we assume that the entire area where there will be works is identical and has to be cleared and excavated in the same way. A future improvement could be to distinguish the part that is on the existing dike (with clear top, clay layers) and the part that is behind it
 
         area = self.calculate_3d_surface_TIN(height_source='ahn')['area']
 
-        V1b = area * thickness_top_layer * RATIO_TOE_DIKE_TO_EXTENT
-        V2b = area * thickness_clay_layer * RATIO_TOE_DIKE_TO_EXTENT
-        S0 = area * (1 - RATIO_TOE_DIKE_TO_EXTENT)
+        V1b = area * thickness_top_layer
+        V2b = area * thickness_clay_layer
+        S0 = area
         return V1b, V2b, S0
 
     def _interpolate_design_heights_on_global_grid(self) -> np.ndarray:
