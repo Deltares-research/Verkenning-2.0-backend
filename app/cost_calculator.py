@@ -584,7 +584,6 @@ class CostCalculator:
         S5 = volumes['S5']  # surface area of the new dike body. 
 
 
-        
         ### Combine to get costs
         kosten_opruimen             = self.build_cost_item(S0, 'Q-AW010', 'm2') # opruimen terrein
         kosten_maaien               = self.build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
@@ -596,7 +595,7 @@ class CostCalculator:
         aanbrengen_nieuwe_kleilaag  = self.build_cost_item(V4, 'Q-GV080', 'm3')  # aanbrengen nieuwe kleilaag
         profileren_nieuwe_kleilaag  = self.build_cost_item(S5, 'Q-GV110', 'm2')  # profileren nieuwe kleilaag
         hergebruik_toplaag          = self.build_cost_item(V1b, 'Q-GV060', 'm3')  # hergebruiken teelaarde in nieuwe toplaag
-        aanvullen_toplaag           = self.build_cost_item((V3 - V1b), 'Q-GV070', 'm3')  # aanvullen teelaarde in nieuwe toplaag
+        aanvullen_toplaag           = self.build_cost_item(max(0, V3 - V1b), 'Q-GV070', 'm3')  # aanvullen teelaarde in nieuwe toplaag
         profileren_nieuwe_toplaag   = self.build_cost_item(S5, 'Q-GV120', 'm2')  # profileren nieuwe graslaag en inzaaien
         inzaaien_nieuwe_toplaag     = self.build_cost_item(S5, 'Q-AW030', 'm2')  # profileren nieuwe graslaag en inzaaien
         
