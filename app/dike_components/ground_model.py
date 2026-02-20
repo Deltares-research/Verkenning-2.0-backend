@@ -170,6 +170,7 @@ class GroundModel:
 
         clay_layer_top_surface = []
         sand_layer_top_surface = []
+        base_surface_3d = []
 
         design_vertices = [
             np.array(poly.exterior.coords)
@@ -195,6 +196,10 @@ class GroundModel:
                     fill_value=design_z_fallback
                 )
 
+            base_surface_3d.append(
+                Polygon([(x, y, z) for (x, y), z in zip(xy, z_vals)])
+            )
+
             clay_layer_top_surface.append(
                 Polygon([(x, y, z - thickness_top_layer) for (x, y), z in zip(xy, z_vals)])
             )
@@ -205,7 +210,7 @@ class GroundModel:
                 ])
             )
 
-        volume_below_design_surface = self.calculate_volume_below_surface(self.design_export_3d.geometry).get(
+        volume_below_design_surface = self.calculate_volume_below_surface(base_surface_3d).get(
             'fill_volume')
         volume_below_top_layer = self.calculate_volume_below_surface(clay_layer_top_surface).get('fill_volume')
         volume_below_clay_layer = self.calculate_volume_below_surface(sand_layer_top_surface).get('fill_volume')
