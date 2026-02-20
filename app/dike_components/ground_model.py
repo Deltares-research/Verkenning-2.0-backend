@@ -10,10 +10,7 @@ from shapely.geometry.polygon import Polygon
 from shapely.ops import unary_union
 import geopandas as gpd
 
-from dev.generate_3d_ruimtebeslag import ruimtebeslag_result
 from ..AHN_raster_API import AHN4_API
-from ..cost_calculator import CostCalculator
-from ..unit_costs_and_surcharges import load_kosten_catalogus
 from ..utils import reproject_polygon_with_z
 
 

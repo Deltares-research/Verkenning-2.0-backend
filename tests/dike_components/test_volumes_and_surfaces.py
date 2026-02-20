@@ -1,8 +1,6 @@
 from pathlib import Path
 
-from app.dike_components.onverankerde_damwand_model import OnverankerdeDamwandModel
 from app.dike_components.dike_model import DikeModel
-from app.dike_components.ground_model import GroundModel
 import geopandas as gpd
 
 import pytest
@@ -87,6 +85,15 @@ def test_2d_3d_ruimtebeslag(gdf_ground_cut_and_fill):
     assert ruimtebelsag_3d_area > ruimtebelsag_2d_area
     assert ruimtebelsag_3d_area < newells_method
 
+
+def test_V3_V4_V5(gdf_ground):
+    dike_model = DikeModel(_3d_ground_polygon = gdf_ground)
+    ground_model = dike_model.ground_model
+    ruimtebeslag_2d_result = ground_model.calculate_ruimtebeslag_2d()
+    ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
+    volumes = ground_model.calculate_volume_v3_v4_v5(base_surface=ruimte_2dbeslag_polygons)
+
+    assert volumes == (725.5187660935912, 1840.0080592274949, 741.8571173331043) # V3, V4, V5
 
 
 
