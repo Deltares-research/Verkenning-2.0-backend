@@ -78,7 +78,7 @@ def test_csv_to_nested_json(tmp_path):
 
 
 def test_run_as_main(tmp_path):
-    script = Path("app", "datasets", "unit_cost_to_json.py").resolve()
+    script = Path(__file__).parent.parent.parent.joinpath("app", "datasets", "unit_cost_to_json.py").resolve()
 
     result = subprocess.run(
         [sys.executable, str(script)],

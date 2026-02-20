@@ -1,9 +1,15 @@
 from app.datasets.unit_cost_to_json import csv_to_nested_json, parse_price, parse_percentage
 import json
+from pathlib import Path
 
 from app.unit_costs_and_surcharges import KostenCatalogus, KostenItem, load_kosten_catalogus
 
 import pytest
+
+
+DATASET_DIR = Path(__file__).resolve().parent.parent / "app" / "datasets"
+EENHEIDSPRIJZEN_JSON = DATASET_DIR / "eenheidsprijzen.json"
+OPSLAGFACTOREN_JSON = DATASET_DIR / "opslagfactoren.json"
 
 @pytest.mark.parametrize("raw,expected", [
     ("€ 414.87", 414.87),
@@ -99,7 +105,10 @@ Q-GC1A.100,Damwand 2m,m¹,€ 414.87
 #tests for the dataclass values
 #verify it has the right number of categories and items
 def test_load_kosten_catalogus():
-    catalogus = load_kosten_catalogus()
+    catalogus = load_kosten_catalogus(
+        eenheidsprijzen=str(EENHEIDSPRIJZEN_JSON),
+        opslagfactoren=str(OPSLAGFACTOREN_JSON),
+    )
     assert isinstance(catalogus, KostenCatalogus)
     assert "Damwandconstructies (vereenvoudigd)" in catalogus.categorieen
     assert "Grondverzet" in catalogus.categorieen
@@ -116,7 +125,10 @@ def test_load_kosten_catalogus():
             assert isinstance(item.prijs, float)
 
 def test_number_of_items_in_categories():
-    catalogus = load_kosten_catalogus()
+    catalogus = load_kosten_catalogus(
+        eenheidsprijzen=str(EENHEIDSPRIJZEN_JSON),
+        opslagfactoren=str(OPSLAGFACTOREN_JSON),
+    )
     damwand_items = catalogus.categorieen.get("Damwandconstructies (vereenvoudigd)", [])
     grondverzet_items = catalogus.categorieen.get("Grondverzet", [])
     opslagfactoren_constructies = catalogus.categorieen.get("Percentages ter bepaling Opslagfactor investeringskosten / benoemde directe bouwkosten Grondversterkingen", [])
