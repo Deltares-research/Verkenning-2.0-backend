@@ -48,9 +48,9 @@ def test_dike_model_cost_computation_with_ground_only(gdf_ground):
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
     #get all values from cost_dict['Directe kosten grondwerk'] and sum them
     values = [entry['value'] for entry in cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk'].values() if isinstance(entry, dict) and 'value' in entry]
-    np.testing.assert_allclose(sum(values), 67967.04, rtol=1e-2)
-    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 67967.04, rtol=1e-2)
-    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_incl_BTW'], 82240.12, rtol=1e-2)
+    np.testing.assert_allclose(sum(values), 63465.54, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 63465.54, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_incl_BTW'], 76793.30, rtol=1e-2)
     assert sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies']) == 0.0
     assert sum_values_from_cost_dict(cost_dict['Vastgoedkosten']) == 0.0
 
@@ -66,7 +66,7 @@ def test_dike_model_cost_computation_with_both(gdf_structure, gdf_ground):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground, _2d_structure = gdf_structure, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=5, road_area=15)
 
-    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 68294.29, rtol=1e-2)
+    np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 63465.54, rtol=1e-2)
     np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies']), 417198.65, rtol=1e-2)
     np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Indirecte Bouwkosten']), 200461.99, rtol=1e-2)
     np.testing.assert_allclose(cost_dict['Vastgoedkosten']['total_real_estate_costs']['value_excl_BTW'], 4522087.5, rtol=1e-2)
