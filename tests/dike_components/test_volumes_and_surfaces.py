@@ -69,9 +69,6 @@ def test_ahn_full_and_envelop(gdf_ground_cut_and_fill):
     assert envelop_AHN_surface == pytest.approx(EXPECTED_ENVELOP_AHN_SURFACE, rel=1e-9)
     assert full_AHN_surface > envelop_AHN_surface
 
-
-
-
 def test_2d_3d_ruimtebeslag(gdf_ground_cut_and_fill):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground_cut_and_fill)
     ground_model = dike_model.ground_model

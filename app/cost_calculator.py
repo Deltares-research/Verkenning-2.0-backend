@@ -575,29 +575,30 @@ class CostCalculator:
         Q_AW030 = self.unit_price_dict['Q-AW030'].price
 
 
-        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt)
-        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal)
-        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk
-        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk
-        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk
-        S0 = volumes['S0']  # surface area on the old dike that needs to be cleared and mowed 
-        S5 = volumes['S5']  # surface area of the new dike body. 
-
+        V1b = volumes['V1b']  # Volume grasbekleding van het huidig profiel (verwijderd en hergebruikt) - BASED ON envelop_AHN_surface
+        V2b = volumes['V2b']  # Volume kleilaag van het huidig profiel (verwijderd en hergebruikt als kernmateriaal) - BASED ON envelop_AHN_surface
+        V3 = volumes['V3']  # volume grasbekleding van de nieuwe dijk - BASED ON envelop_design_surface
+        V4 = volumes['V4']  # volume kleilaag van de nieuwe dijk - BASED ON envelop_design_surface
+        V5 = volumes['V5']  # volume kernmateriaal van de nieuwe dijk - BASED ON envelop_design_surface
+        full_AHN_surface = volumes['full_AHN_surface'] # m2
+        envelop_AHN_surface = volumes['envelop_AHN_surface'] # m2
+        full_design_surface = volumes['full_design_surface'] # m2
+        envelop_design_surface = volumes['envelop_design_surface'] # m2
 
         ### Combine to get costs
-        kosten_opruimen             = self.build_cost_item(S0, 'Q-AW010', 'm2') # opruimen terrein
-        kosten_maaien               = self.build_cost_item(S0, 'Q-AW020', 'm2')  # maaien terrein
+        kosten_opruimen             = self.build_cost_item(full_AHN_surface, 'Q-AW010', 'm2') # opruimen terrein
+        kosten_maaien               = self.build_cost_item(full_AHN_surface, 'Q-AW020', 'm2')  # maaien terrein
         afgraven_toplaag            = self.build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
         afgraven_oud_materiaal      = self.build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!
         hergebruik_oud_materiaal    = self.build_cost_item(V2b, 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern #TODO CHECK!
-        aanvullen_kern              = self.build_cost_item((V5 + V1b), 'Q-GV090', 'm3')  # aanvullen nieuwe kern met nieuw materiaal
-        profileren_dijkkern         = self.build_cost_item(S5, 'Q-GV100', 'm2')  # profileren van dijkkern
+        aanvullen_kern              = self.build_cost_item(max(0, V5 - V2b), 'Q-GV090', 'm3')  # aanvullen nieuwe kern met nieuw materiaal
+        profileren_dijkkern         = self.build_cost_item(envelop_design_surface, 'Q-GV100', 'm2')  # profileren van dijkkern
         aanbrengen_nieuwe_kleilaag  = self.build_cost_item(V4, 'Q-GV080', 'm3')  # aanbrengen nieuwe kleilaag
-        profileren_nieuwe_kleilaag  = self.build_cost_item(S5, 'Q-GV110', 'm2')  # profileren nieuwe kleilaag
+        profileren_nieuwe_kleilaag  = self.build_cost_item(envelop_design_surface, 'Q-GV110', 'm2')  # profileren nieuwe kleilaag
         hergebruik_toplaag          = self.build_cost_item(V1b, 'Q-GV060', 'm3')  # hergebruiken teelaarde in nieuwe toplaag
         aanvullen_toplaag           = self.build_cost_item(max(0, V3 - V1b), 'Q-GV070', 'm3')  # aanvullen teelaarde in nieuwe toplaag
-        profileren_nieuwe_toplaag   = self.build_cost_item(S5, 'Q-GV120', 'm2')  # profileren nieuwe graslaag en inzaaien
-        inzaaien_nieuwe_toplaag     = self.build_cost_item(S5, 'Q-AW030', 'm2')  # profileren nieuwe graslaag en inzaaien
+        profileren_nieuwe_toplaag   = self.build_cost_item(full_design_surface, 'Q-GV120', 'm2')  # profileren nieuwe graslaag en inzaaien
+        inzaaien_nieuwe_toplaag     = self.build_cost_item(full_design_surface, 'Q-AW030', 'm2')  # profileren nieuwe graslaag en inzaaien
         
 
         return DirectCostGroundWork(
