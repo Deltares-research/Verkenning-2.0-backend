@@ -9,18 +9,20 @@ from pathlib import Path
 import json
 import geopandas as gpd
 
+TEST_DATA_DIR = Path(__file__).resolve().parent / "test_data"
+
 @pytest.fixture(scope="module")
 def gdf_structure():
     #default output is Onverankerde damwand
-    return gpd.read_file('tests/test_data/test_damwand_input_lines_with_properties.geojson')
+    return gpd.read_file(TEST_DATA_DIR / "test_damwand_input_lines_with_properties.geojson")
 
 @pytest.fixture(scope="module")
 def gdf_ground_base():
-    return gpd.read_file('tests/test_data/test_berm__ontwerp_3d.geojson')
+    return gpd.read_file(TEST_DATA_DIR / "test_berm__ontwerp_3d.geojson")
 
 @pytest.fixture(scope="module")
 def gdf_ground_cut_and_fill():
-    return gpd.read_file('tests/test_data/test_berm__ontwerp_3d_afgraven.geojson')
+    return gpd.read_file(TEST_DATA_DIR / "test_berm__ontwerp_3d_afgraven.geojson")
 # Try to import, but allow tests to run even if volume_calc has issues
 try:
     from main import app
