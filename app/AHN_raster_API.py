@@ -1,9 +1,7 @@
-from owslib.wcs import WebCoverageService
-from shapely.geometry import LineString
-from io import BytesIO
+import requests
 import numpy as np
-import time
-import warnings
+from shapely.geometry import LineString
+from scipy.ndimage import map_coordinates
 
 try:
     import rasterio
@@ -12,118 +10,113 @@ try:
     RASTERIO_AVAILABLE = True
 except Exception:
     RASTERIO_AVAILABLE = False
-    from PIL import Image
 
-from scipy.ndimage import map_coordinates
 
 """
-Optimized AHN4 client for extracting elevation profiles along LineStrings.
+AHN client for extracting elevation profiles along LineStrings
+using an Esri ImageServer (exportImage endpoint).
 
 Features:
-- Raster caching to avoid repeated WCS downloads
+- Raster caching to avoid repeated downloads
 - Small bbox computed from a LineString with configurable buffer
-- Uses rasterio (fast GeoTIFF decoding) with fallback to PIL
+- Uses rasterio for fast GeoTIFF decoding
 - Uses scipy.ndimage.map_coordinates for fast bilinear interpolation
 - Vectorized sampling along the LineString
 
 Dependencies:
 - numpy
 - shapely
-- owslib
-- rasterio (recommended)
+- requests
+- rasterio
 - scipy
-
-Example usage at the bottom.
 """
 
-from owslib.wcs import WebCoverageService
-from shapely.geometry import LineString
-from io import BytesIO
-import numpy as np
-import time
-import warnings
-
-try:
-    import rasterio
-    from rasterio.io import MemoryFile
-    from rasterio.transform import Affine
-    RASTERIO_AVAILABLE = True
-except Exception:
-    RASTERIO_AVAILABLE = False
-    from PIL import Image
-
-from scipy.ndimage import map_coordinates
+DEFAULT_IMAGE_SERVER_URL = (
+    'https://ahn.arcgisonline.nl/arcgis/rest/services/'
+    'Hoogtebestand/AHN4_DTM_50cm/ImageServer'
+)
 
 
 class AHN4_API:
-    def __init__(self, wcs_url='https://service.pdok.nl/rws/ahn/wcs/v1_0?SERVICE=WCS',
+    def __init__(self, image_server_url=DEFAULT_IMAGE_SERVER_URL,
                  resolution=1.0, default_buffer=2.5):
         """Create client.
 
         Args:
-            wcs_url: WCS endpoint
+            image_server_url: Esri ImageServer REST endpoint
             resolution: requested resolution in meters (default 1.0)
             default_buffer: buffer in meters applied around the LineString to form bbox
         """
-        self.wcs = WebCoverageService(wcs_url, version='1.0.0')
-        # self.coverage_ids = list(self.wcs.contents)
-        self.coverage_ids = ['dtm_05m']
+        self.base_url = image_server_url.rstrip('/')
         self.resolution = float(resolution)
         self.default_buffer = float(default_buffer)
 
         self._cache = {}
 
     # ----------------------------- Cache utilities -----------------------------
-    def _bbox_key(self, bbox, raster):
-        # quantize bbox to resolution to reduce cache misses
+    def _bbox_key(self, bbox):
         quant = self.resolution
-        q = tuple([round(c / quant) for c in bbox])
-        return (raster, q)
+        q = tuple(round(c / quant) for c in bbox)
+        return q
 
     def clear_cache(self):
         self._cache.clear()
 
     # ---------------------------- Raster retrieval ----------------------------
     def get_raster_from_wcs(self, bbox, raster=None, force_download=False):
-        """Retrieve raster clipped to bbox from WCS, with caching.
+        """Retrieve raster clipped to bbox from Esri ImageServer, with caching.
+
+        Kept as get_raster_from_wcs for backwards compatibility.
 
         Returns: (data: 2D numpy array, transform: Affine)
         """
-        if raster is None:
-            raster = self.coverage_ids[0]
-        elif isinstance(raster, int):
-            raster = self.coverage_ids[raster]
-
-        key = self._bbox_key(bbox, raster)
+        key = self._bbox_key(bbox)
         if (not force_download) and key in self._cache:
             return self._cache[key]
 
-        # Validate bbox
         if bbox[2] - bbox[0] == 0 or bbox[3] - bbox[1] == 0:
             raise ValueError('BBox has zero width/height')
 
-        output = self.wcs.getCoverage(identifier=raster,
-                                      bbox=bbox,
-                                      resx=self.resolution,
-                                      resy=self.resolution,
-                                      format='GeoTIFF',
-                                      crs='EPSG:28992',
-                                      interpolation='AVERAGE')
+        width = max(1, int(round((bbox[2] - bbox[0]) / self.resolution)))
+        height = max(1, int(round((bbox[3] - bbox[1]) / self.resolution)))
 
-        content = output.read()
+        params = {
+            'bbox': f'{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}',
+            'bboxSR': 28992,
+            'imageSR': 28992,
+            'size': f'{width},{height}',
+            'format': 'tiff',
+            'interpolation': 'RSP_BilinearInterpolation',
+            'f': 'image',
+        }
+
+        response = requests.get(f'{self.base_url}/exportImage', params=params)
+        response.raise_for_status()
+
+        # The server may return a JSON error even with f=image
+        content_type = response.headers.get('Content-Type', '')
+        if 'json' in content_type:
+            error_info = response.json()
+            raise RuntimeError(
+                f'ImageServer returned error: {error_info.get("error", error_info)}'
+            )
+
+        if not RASTERIO_AVAILABLE:
+            raise RuntimeError(
+                'rasterio is required to decode GeoTIFF from ImageServer'
+            )
 
         try:
-            with MemoryFile(content) as mem:
+            with MemoryFile(response.content) as mem:
                 with mem.open() as src:
-                    data = src.read(1)
+                    data = src.read(1).astype('float32')
                     transform = src.transform
-                    # replace large invalid values with NaN
-                    data = data.astype('float32')
                     data[data > 9_000] = np.nan
         except Exception as e:
-            raise RuntimeError('Failed to read GeoTIFF with rasterio. Exception: ' + str(e))
+            raise RuntimeError(
+                'Failed to read GeoTIFF from ImageServer. Exception: ' + str(e)
+            )
 
-        # Store in cache and return
         self._cache[key] = (data, transform)
         return data, transform
 
@@ -136,16 +129,15 @@ class AHN4_API:
             linestring: shapely LineString in EPSG:28992 coordinates
             spacing: meters between samples along the line (ignored if n_points provided)
             buffer: buffer in meters to expand bbox around line (default uses self.default_buffer)
-            raster: raster id or index for WCS (None => first available)
+            raster: unused, kept for API compatibility
             correction: subtract from L distances (for custom distance origins)
             n_points: if provided, use this many evenly spaced samples (overrides spacing)
 
-        Returns: (L: 1D distances array, Z: 1D elevations array)
+        Returns: LineString with Z values (3D)
         """
         if buffer is None:
             buffer = self.default_buffer
 
-        # Decide sample distances along the line
         length = linestring.length
         if n_points is not None:
             distances = np.linspace(0, length, n_points)
@@ -155,23 +147,18 @@ class AHN4_API:
             n = max(2, int(np.ceil(length / spacing)) + 1)
             distances = np.linspace(0, length, n)
 
-        # Sample coordinates along the line
         pts = [linestring.interpolate(d) for d in distances]
         xs = np.array([p.x for p in pts])
         ys = np.array([p.y for p in pts])
 
-        # small bbox around entire LineString to minimize raster size
         minx, miny, maxx, maxy = linestring.bounds
         bbox = (minx - buffer, miny - buffer, maxx + buffer, maxy + buffer)
 
-        data, transform = self.get_raster_from_wcs(bbox, raster=raster)
+        data, transform = self.get_raster_from_wcs(bbox)
 
-        # compute fractional row/col indices for each sample point using inverse transform
         try:
             inv = ~transform
         except Exception:
-            # If transform is not Affine (e.g., when PIL fallback made a custom Affine), construct one
-            # This is an unlikely path; if it happens, assume regular grid
             x0, y0, x1, y1 = bbox
             resx = (x1 - x0) / float(data.shape[1])
             resy = (y1 - y0) / float(data.shape[0])
@@ -182,30 +169,15 @@ class AHN4_API:
         cols = np.array([c for c, r in cols_rows], dtype=float)
         rows = np.array([r for c, r in cols_rows], dtype=float)
 
-        # map_coordinates expects coords in order [rows, cols]
         coords = np.vstack([rows, cols])
 
-        # clamp coords slightly inside array to avoid exact-edge indexing issues
         eps = 1e-6
         coords[0] = np.clip(coords[0], -0.5 + eps, data.shape[0] - 0.5 - eps)
         coords[1] = np.clip(coords[1], -0.5 + eps, data.shape[1] - 0.5 - eps)
 
-        # perform fast bilinear interpolation (order=1)
         Z = map_coordinates(data, coords, order=1, mode='nearest')
 
-
-        #make linestring with Z values
         linestring_3d = LineString([(x, y, z_val) for (x, y), z_val in zip(zip(xs, ys), Z)])
-
-
-        # #plot for testing purposes
-        # bbox_2 = (bbox[0], bbox[2], bbox[1], bbox[3])
-        # import matplotlib.pyplot as plt
-        # plt.figure()
-        # plt.imshow(data, extent=bbox_2, origin='upper', cmap='terrain')
-        # #plot linestring on top of the raster with elevation in color
-        # #get right coordinates
-        # plt.scatter(xs,ys, c=np.array(Z), cmap='Oranges')
         return linestring_3d
 
     # ---------------------------- Convenience API -----------------------------
@@ -214,5 +186,4 @@ class AHN4_API:
         self.clear_cache()
 
     def list_coverages(self):
-        return self.coverage_ids
-
+        return ['AHN4_DTM_50cm']
