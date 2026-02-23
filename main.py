@@ -104,7 +104,7 @@ class CostCalculationRequest(BaseModel):
 
 
 @app.post("/api/calculate_designs", response_model=DesignCalculationResult)
-async def calculate_designs(
+def calculate_designs(
     request: VolumeCalculationRequest,
     api_key: str = Depends(verify_api_key)
 ):
@@ -201,7 +201,7 @@ async def calculate_designs(
 
 
 @app.post("/api/cost_calculation", response_model=DesignCostResult)
-async def calculate_total_cost(
+def calculate_total_cost(
         payload: CostCalculationRequest,
         api_key: str = Depends(verify_api_key)
 ):

@@ -133,7 +133,7 @@ class AHN4_API:
             'f': 'image',
         }
 
-        response = requests.get(f'{self.base_url}/exportImage', params=params)
+        response = requests.get(f'{self.base_url}/exportImage', params=params, timeout=60)
         response.raise_for_status()
 
         # The server may return a JSON error even with f=image
@@ -159,7 +159,7 @@ class AHN4_API:
             'FORMAT': 'GEOTIFF_FLOAT32',
         }
 
-        response = requests.get(base_url, params=params)
+        response = requests.get(base_url, params=params, timeout=60)
         response.raise_for_status()
 
         content_type = response.headers.get('Content-Type', '').lower()
