@@ -340,13 +340,12 @@ class GroundModel:
             max_edge_length = 8 * self.grid_size  # is the largest edge is 8 times bigger than the grid size, we consider it an unrealistic triangle that spans a gap in the data, and we remove it from the area calculation.
             triangles = self._filter_triangles_by_max_edge_length(points_xy, triangles, max_edge_length)
 
-        def triangle_area(p1, p2, p3):
-            return 0.5 * np.linalg.norm(np.cross(p2 - p1, p3 - p1))
-
-        area = 0.0
-        for tri_indices in triangles:
-            p1, p2, p3 = points_3d[tri_indices]
-            area += triangle_area(p1, p2, p3)
+        if triangles.size == 0:
+            area = 0.0
+        else:
+            tri_pts = points_3d[triangles]  # (M, 3, 3)
+            cross = np.cross(tri_pts[:, 1] - tri_pts[:, 0], tri_pts[:, 2] - tri_pts[:, 0])
+            area = 0.5 * np.sum(np.linalg.norm(cross, axis=1))
 
         print("Surface area:", area)
         return {
