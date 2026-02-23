@@ -3,7 +3,7 @@ from pathlib import Path
 import geopandas as gpd
 
 from app.unit_costs_and_surcharges import load_kosten_catalogus
-from ..AHN_raster_API import AHN4_API
+from ..AHN_raster_API import AHN4_API, DEFAULT_PDOK_WCS_URL
 import numpy as np
 from app.cost_calculator import StructureCosts
 
@@ -11,7 +11,8 @@ class StructureModel:
     valid_constructietypes = ['Onverankerde damwand', 'Verankerde damwand', 'Heavescherm']
 
     '''Model for calculating properties of structures. Structure should contain of one single line segment with properties.'''
-    def __init__(self, location: gpd.GeoDataFrame, complexity: str = 'gemiddelde maatregel'):
+    def __init__(self, location: gpd.GeoDataFrame, complexity: str = 'gemiddelde maatregel',
+                 ahn_source: str = 'arcgis', ahn_wcs_url: str | None = None):
         if len(location) != 1:
             raise ValueError("Location must contain exactly one line segment.")
         self.location = location
@@ -19,6 +20,8 @@ class StructureModel:
         self.location = self.location.to_crs(epsg=28992)
         
         self.complexity = complexity
+        self.ahn_source = ahn_source
+        self.ahn_wcs_url = ahn_wcs_url
         
         #check if all types in location are the same
         types = self.location['type'].unique()
@@ -55,7 +58,10 @@ class StructureModel:
         # Placeholder for AHN data processing
         # In a real implementation, this would involve querying AHN data
         # and calculating the length of the elements based on depth values.
-        self.elevation = AHN4_API().get_elevation_from_line(self.location.geometry[0])
+        self.elevation = AHN4_API(
+            source=self.ahn_source,
+            wcs_url=self.ahn_wcs_url if self.ahn_wcs_url else DEFAULT_PDOK_WCS_URL,
+        ).get_elevation_from_line(self.location.geometry[0])
 
     def get_screen_length(self, type = 'mean'):
         """Calculate the length of the structure that is below the specified depth."""

@@ -10,7 +10,7 @@ from shapely.geometry.polygon import Polygon
 from shapely.ops import unary_union
 import geopandas as gpd
 
-from ..AHN_raster_API import AHN4_API
+from ..AHN_raster_API import AHN4_API, DEFAULT_PDOK_WCS_URL
 from ..utils import reproject_polygon_with_z
 
 
@@ -20,6 +20,8 @@ class GroundModel:
             design_export_3d: gpd.GeoDataFrame,
             grid_size: float = 0.525,
             excavation_mode='envelope',
+        ahn_source: str = 'arcgis',
+        ahn_wcs_url: Optional[str] = None,
     ):
         '''Model representing the ground and associated volume calculations for a dike design. The ground model is initialized with a 3D design surface, and can compute volumes of soil to be excavated or filled based on the difference between the design surface and the current ground surface (from AHN).
         two excavation modes are supported:
@@ -32,6 +34,8 @@ class GroundModel:
         if not excavation_mode in ['envelope', 'cut_and_fill']:
             raise ValueError(f"Invalid excavation mode: {excavation_mode}. Must be 'envelope' or 'cut_and_fill'.")
         self.excavation_mode = excavation_mode  # cut_and_fill or envelope.
+        self.ahn_source = ahn_source
+        self.ahn_wcs_url = ahn_wcs_url
 
         self.import_elevation_data()
 
@@ -101,7 +105,12 @@ class GroundModel:
         self.grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
 
         # 3) Get the AHN elevations for the grid
-        self.elev_global = self.get_elevations(AHN4_API(resolution=self.grid_size), combined_poly, self.grid_pts_global)
+        ahn_client = AHN4_API(
+            resolution=self.grid_size,
+            source=self.ahn_source,
+            wcs_url=self.ahn_wcs_url if self.ahn_wcs_url else DEFAULT_PDOK_WCS_URL,
+        )
+        self.elev_global = self.get_elevations(ahn_client, combined_poly, self.grid_pts_global)
 
     def polygon_grid_2d_vectorized(self, poly: Polygon, cellsize: float = 1.0) -> np.ndarray:
         """Generate grid points inside polygon using fully vectorized operations.
@@ -374,6 +383,8 @@ class GroundModel:
                                                  )
 
         #### Calculate V3, V4, V5 based on Envelop design
+        ruimtebeslag_2d_result = self.calculate_ruimtebeslag_2d()
+        ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
         envelop_design_surface = self.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']
         V3, V4, V5 = self.calculate_volume_v3_v4_v5(
             thickness_top_layer=thickness_top_layer,
