@@ -18,7 +18,7 @@ def gdf_structure():
 
 
 #test for checking if gdf is read correctly
-@pytest.mark.parametrize("expected_diepte, expected_type, expected_wandlengte", [(-2.0, 'Onverankerde damwand', 9.346578386235745)])
+@pytest.mark.parametrize("expected_diepte, expected_type, expected_wandlengte", [(-2.0, 'Onverankerde damwand', 9.317795771233579)])
 def test_structure_model_properties(expected_diepte, expected_type,expected_wandlengte,gdf_structure):
     onverankerde_damwand = OnverankerdeDamwandModel(location=gdf_structure)
 

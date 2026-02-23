@@ -68,6 +68,13 @@ Edit the `.env` file and set your API key:
 # API Key for authentication (REQUIRED)
 API_KEY=your-secure-api-key-here
 
+# AHN source configuration (OPTIONAL, defaults to ArcGIS)
+# Allowed values: arcgis, pdok
+AHN_SOURCE=arcgis
+# Used when AHN_SOURCE=pdok
+AHN_WCS_URL=https://service.pdok.nl/rws/ahn/wcs/v1_0?SERVICE=WCS
+AHN_PDOK_COVERAGE=ahn4_05m_dtm
+
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
