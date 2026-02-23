@@ -374,8 +374,6 @@ class GroundModel:
                                                  )
 
         #### Calculate V3, V4, V5 based on Envelop design
-        ruimtebeslag_2d_result = self.calculate_ruimtebeslag_2d()
-        ruimte_2dbeslag_polygons = ruimtebeslag_2d_result['polygons_rd']
         envelop_design_surface = self.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']
         V3, V4, V5 = self.calculate_volume_v3_v4_v5(
             thickness_top_layer=thickness_top_layer,
