@@ -575,8 +575,8 @@ class CostCalculator:
         kosten_maaien               = self.build_cost_item(full_AHN_surface, 'Q-AW020', 'm2')  # maaien terrein
         afgraven_toplaag            = self.build_cost_item(V1b, 'Q-GV010', 'm3')  # afgraven oude grasbekleding naar depot
         afgraven_oud_materiaal      = self.build_cost_item(V2b, 'Q-GV030', 'm3')  # afgraven oude kleilaag en zand naar depot #TODO CHECK!
-        hergebruik_oud_materiaal    = self.build_cost_item(min(V2b, V5), 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern #TODO CHECK!
-        aanvullen_kern              = self.build_cost_item(max(0, V5 - V2b), 'Q-GV090', 'm3')  # aanvullen nieuwe kern met nieuw materiaal
+        hergebruik_oud_materiaal    = self.build_cost_item(V2b, 'Q-GV050', 'm3')  # hergebruiken oude kleilaag en zand in nieuwe kern. Als opvulling volume oude kleilaag.
+        aanvullen_kern              = self.build_cost_item(V5 + V1b, 'Q-GV090', 'm3')  # aanvullen nieuwe kern met nieuw materiaal. V2b is al aangevuld
         profileren_dijkkern         = self.build_cost_item(envelop_design_surface, 'Q-GV100', 'm2')  # profileren van dijkkern
         aanbrengen_nieuwe_kleilaag  = self.build_cost_item(V4, 'Q-GV080', 'm3')  # aanbrengen nieuwe kleilaag
         profileren_nieuwe_kleilaag  = self.build_cost_item(envelop_design_surface, 'Q-GV110', 'm2')  # profileren nieuwe kleilaag
