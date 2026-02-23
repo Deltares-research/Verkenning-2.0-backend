@@ -8,3 +8,5 @@ __pycache__/
 .pytest_cache/
 # output files
 output/
+# acces
+.claude/settings.local.json

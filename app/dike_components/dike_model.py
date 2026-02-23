@@ -14,21 +14,43 @@ class DikeModel:
     '''Model representing a dike with associated ground and structure models.'''
 
     def __init__(self, _3d_ground_polygon: gpd.GeoDataFrame = None, _2d_structure: gpd.GeoDataFrame = None,
-                 grid_size: float = 0.525, complexity: str = 'gemiddelde maatregel', excavation_mode: str = 'envelope'):
+                 grid_size: float = 0.525, complexity: str = 'gemiddelde maatregel', excavation_mode: str = 'envelope',
+                 ahn_source: str = 'arcgis', ahn_wcs_url: str | None = None):
         self.grid_size = grid_size  # Grid size for area calculations (default 0.525m for ~4070m² match)
         self.complexity = complexity
         if _3d_ground_polygon is not None:
             self._3d_ground_polygon = _3d_ground_polygon
-            self.ground_model = GroundModel(_3d_ground_polygon, grid_size=grid_size, excavation_mode=excavation_mode)
+            self.ground_model = GroundModel(
+                _3d_ground_polygon,
+                grid_size=grid_size,
+                excavation_mode=excavation_mode,
+                ahn_source=ahn_source,
+                ahn_wcs_url=ahn_wcs_url,
+            )
         if _2d_structure is not None:
             self._2d_structure = _2d_structure
             self._type = _2d_structure.loc[0, 'type']
             if self._type == 'Onverankerde damwand':
-                self.structure_model = OnverankerdeDamwandModel(_2d_structure, complexity=complexity)
+                self.structure_model = OnverankerdeDamwandModel(
+                    _2d_structure,
+                    complexity=complexity,
+                    ahn_source=ahn_source,
+                    ahn_wcs_url=ahn_wcs_url,
+                )
             elif self._type == 'Verankerde damwand':
-                self.structure_model = VerankerdeDamwandModel(_2d_structure, complexity=complexity)
+                self.structure_model = VerankerdeDamwandModel(
+                    _2d_structure,
+                    complexity=complexity,
+                    ahn_source=ahn_source,
+                    ahn_wcs_url=ahn_wcs_url,
+                )
             elif self._type == 'Heavescherm':
-                self.structure_model = HeaveschermModel(_2d_structure, complexity=complexity)
+                self.structure_model = HeaveschermModel(
+                    _2d_structure,
+                    complexity=complexity,
+                    ahn_source=ahn_source,
+                    ahn_wcs_url=ahn_wcs_url,
+                )
             else:
                 raise ValueError(f"Onbekend constructietype: {self._type}")
 

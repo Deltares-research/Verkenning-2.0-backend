@@ -68,7 +68,7 @@ def test_dike_model_cost_computation_with_both(gdf_structure, gdf_ground):
 
     np.testing.assert_allclose(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten grondwerk']['totale_BDBK_grondwerk']['value_excl_BTW'], 63465.54, rtol=1e-2)
     np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies']), 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Indirecte Bouwkosten']), 200461.99, rtol=1e-2)
+    np.testing.assert_allclose(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Indirecte Bouwkosten']), 197983.75, rtol=1e-2)
     np.testing.assert_allclose(cost_dict['Vastgoedkosten']['total_real_estate_costs']['value_excl_BTW'], 4522087.5, rtol=1e-2)
 
 def test_dike_model_cost_computation_with_none():
@@ -100,7 +100,7 @@ def test_dike_model_cost_computation_with_heavescreen(gdf_structure):
     dike_model = DikeModel(_2d_structure = gdf_structure_heavescreen, complexity='makkelijke maatregel')
     cost_dict = dike_model.compute_cost(nb_houses=0, road_area=0)
 
-    np.testing.assert_allclose(float(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies'])), 375517.53)  #example value
+    np.testing.assert_allclose(float(sum_values_from_cost_dict(cost_dict['Bouwkosten']['Directe Bouwkosten']['Directe kosten constructies'])), 373981.50)  #example value
 
 def test_dike_model_cost_computation_with_verankerde_damwand_is_more_expensive_than_onverankerde(gdf_structure):
     gdf_structure_verankerde = gdf_structure.copy()

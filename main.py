@@ -140,7 +140,10 @@ async def calculate_designs(
             )
         
         # Initialize GroundModel with the GeoDataFrame
-        ground_model = GroundModel(gdf, excavation_mode=request.excavation_mode)
+        ground_model = GroundModel(
+            gdf,
+            excavation_mode=request.excavation_mode,
+        )
         
         # Calculate volume using Matthias's method
         volume_start = time.time()
@@ -232,7 +235,12 @@ async def calculate_total_cost(
         else:
             gdf_structure = None
 
-        dike_model = DikeModel(_3d_ground_polygon=gdf_ground, _2d_structure=gdf_structure, complexity=payload.complexity, excavation_mode=payload.excavation_mode)
+        dike_model = DikeModel(
+            _3d_ground_polygon=gdf_ground,
+            _2d_structure=gdf_structure,
+            complexity=payload.complexity,
+            excavation_mode=payload.excavation_mode,
+        )
 
         cost_breakdown = dike_model.compute_cost(road_area=payload.road_surface,
                                                  nb_houses=payload.number_houses)

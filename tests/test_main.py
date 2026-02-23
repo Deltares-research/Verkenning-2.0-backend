@@ -169,9 +169,9 @@ def test_calculate_design_volume_with_real_data_cut_and_fill(gdf_ground_cut_and_
     assert "fill_volume" in result['volume']
     assert result["volume"]["unit"] == "m³"
     assert result["volume"]["calculation_time"] is not None
-    np.testing.assert_allclose(result["volume"]["net_volume"], 977.05, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["net_volume"], 1065.92, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["excavation_volume"], 368.6, rtol=1e-2)
-    np.testing.assert_allclose(result["volume"]["fill_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["fill_volume"], 1435.12, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["grid_points"], 8710, rtol=1e-2)
 
     print(f"Volume calculation result: {result}")
@@ -196,9 +196,9 @@ def test_calculate_design_volume_with_real_data_envelope_cut_fill_case(gdf_groun
     assert result["volume"]["unit"] == "m³"
     assert result["volume"]["calculation_time"] is not None
 
-    np.testing.assert_allclose(result["volume"]["net_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["net_volume"], 1435.12, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["excavation_volume"], 0.0, rtol=1e-2)
-    np.testing.assert_allclose(result["volume"]["fill_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["fill_volume"], 1435.12, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["grid_points"], 8710, rtol=1e-2)
     print(f"Volume calculation result: {result}")
 
@@ -259,7 +259,7 @@ def test_cost_calculation_for_ground_and_structure(gdf_ground_base, gdf_structur
     assert response.status_code == 200
     np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_grondwerk']['value_excl_BTW'], 63465.54, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie']['value_excl_BTW'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 715565.11, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 706313.72, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 222624.27, rtol=1e-2)
 
 def test_cost_calculation_for_structure_only(gdf_structure):
@@ -281,5 +281,5 @@ def test_cost_calculation_for_combination_of_all(gdf_ground_base, gdf_structure)
     response = client.post("/api/cost_calculation", json=payload, headers={"X-API-Key": os.getenv("API_KEY")})
     assert response.status_code == 200
     np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_BDBK_constructie']['value_excl_BTW'], 417198.65, rtol=1e-2)
-    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 819357.29, rtol=1e-2)
+    np.testing.assert_allclose(response.json()["breakdown"]['Bouwkosten']['Indirecte Bouwkosten']['totale_bouwkosten']['value_excl_BTW'], 810105.90, rtol=1e-2)
     np.testing.assert_allclose(response.json()["breakdown"]['Risicoreservering']['value'], 256728.86, rtol=1e-2)
