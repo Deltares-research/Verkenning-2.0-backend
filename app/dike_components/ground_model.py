@@ -1,4 +1,5 @@
 from typing import Union, Optional
+import gc
 
 import numpy as np
 from pathlib import Path
@@ -225,9 +226,13 @@ class GroundModel:
     def _interpolate_design_heights_on_global_grid(self) -> np.ndarray:
         """
         Interpolate design-surface Z-values on the global XY grid.
+        Result is cached on the instance to avoid redundant computation.
 
         :return: 1D array of interpolated design heights (NaN where unavailable)
         """
+        if hasattr(self, '_cached_design_z_global'):
+            return self._cached_design_z_global
+
         design_z_global = np.full(len(self.grid_pts_global), np.nan, dtype=float)
 
         for poly in list(self.design_export_3d.geometry):
@@ -246,6 +251,7 @@ class GroundModel:
             )
             design_z_global[mask] = interpolated_z
 
+        self._cached_design_z_global = design_z_global
         return design_z_global
 
     def calculate_3d_surface_TIN(
@@ -332,7 +338,8 @@ class GroundModel:
 
         points_xy = points_3d[:, :2]
         tri = Delaunay(points_xy)
-        triangles = tri.simplices  # indices of triangle vertices
+        triangles = tri.simplices.copy()  # copy before deleting Delaunay object
+        del tri  # free Delaunay internal structures (large memory footprint)
 
         if height_source == 'design_edges':
             triangles = self._filter_horizontal_triangles(points_3d, triangles)
@@ -348,11 +355,7 @@ class GroundModel:
             area = 0.5 * np.sum(np.linalg.norm(cross, axis=1))
 
         print("Surface area:", area)
-        return {
-            'area': area,
-            'triangles': triangles,
-            'points_3d': points_3d
-        }
+        return {'area': area}
 
     def calculate_all_dike_volumes(self, thickness_top_layer: float = 0.2, thickness_clay_layer: float = 0.8) -> dict:
         """
@@ -368,9 +371,11 @@ class GroundModel:
 
         full_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn')[
             'area']  # This is the area of the 3D surface of the AHN profile under the entire design footprint
+        gc.collect()
 
         envelop_AHN_surface = self.calculate_3d_surface_TIN(height_source='ahn',
                                                             exclude_points_where_ahn_above_design=True)['area']  # this is the area of the 3D surface of the AHN profile where AHN is below the design surface
+        gc.collect()
 
         full_design_surface = self.calculate_total_3d_surface_area().get(
             'total_3d_area_m2')  # assume S3 = S4 = S5: 3D surface area of new dike
@@ -383,6 +388,8 @@ class GroundModel:
 
         #### Calculate V3, V4, V5 based on Envelop design
         envelop_design_surface = self.calculate_3d_surface_TIN(height_source='design', exclude_points_where_ahn_above_design=True)['area']
+        gc.collect()
+
         V3, V4, V5 = self.calculate_volume_v3_v4_v5(
             thickness_top_layer=thickness_top_layer,
             thickness_clay_layer=thickness_clay_layer)
