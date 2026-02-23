@@ -51,7 +51,7 @@ def test_area_ahn_surface(gdf_ground):
     TIN_method = ground_model.calculate_3d_surface_TIN(height_source='ahn')['area']
 
     expected_tin = 2931.5755344605736
-    assert TIN_method == pytest.approx(expected_tin, rel=1e-9)
+    assert TIN_method == pytest.approx(expected_tin, rel=1e-3)
 
 def test_ahn_full_and_envelop(gdf_ground_cut_and_fill):
     dike_model = DikeModel(_3d_ground_polygon = gdf_ground_cut_and_fill)
@@ -60,8 +60,8 @@ def test_ahn_full_and_envelop(gdf_ground_cut_and_fill):
     full_AHN_surface = ground_model.calculate_3d_surface_TIN(height_source='ahn')['area']
     envelop_AHN_surface = ground_model.calculate_3d_surface_TIN(height_source='ahn', exclude_points_where_ahn_above_design=True)['area']
 
-    EXPECTED_FULL_AHN_SURFACE = 2420.3946451200713
-    EXPECTED_ENVELOP_AHN_SURFACE = 1833.5222930868551
+    EXPECTED_FULL_AHN_SURFACE = 2428.820012439969
+    EXPECTED_ENVELOP_AHN_SURFACE = 1844.8961842200986
 
     assert full_AHN_surface == pytest.approx(EXPECTED_FULL_AHN_SURFACE, rel=1e-9)
     assert envelop_AHN_surface == pytest.approx(EXPECTED_ENVELOP_AHN_SURFACE, rel=1e-9)

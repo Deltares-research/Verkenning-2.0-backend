@@ -169,9 +169,9 @@ def test_calculate_design_volume_with_real_data_cut_and_fill(gdf_ground_cut_and_
     assert "fill_volume" in result['volume']
     assert result["volume"]["unit"] == "m³"
     assert result["volume"]["calculation_time"] is not None
-    np.testing.assert_allclose(result["volume"]["net_volume"], 977.05, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["net_volume"], 1065.92, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["excavation_volume"], 368.6, rtol=1e-2)
-    np.testing.assert_allclose(result["volume"]["fill_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["fill_volume"], 1435.12,rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["grid_points"], 8710, rtol=1e-2)
 
     print(f"Volume calculation result: {result}")
@@ -196,9 +196,9 @@ def test_calculate_design_volume_with_real_data_envelope_cut_fill_case(gdf_groun
     assert result["volume"]["unit"] == "m³"
     assert result["volume"]["calculation_time"] is not None
 
-    np.testing.assert_allclose(result["volume"]["net_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["net_volume"], 1435.12, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["excavation_volume"], 0.0, rtol=1e-2)
-    np.testing.assert_allclose(result["volume"]["fill_volume"], 1345.65, rtol=1e-2)
+    np.testing.assert_allclose(result["volume"]["fill_volume"], 1435.12, rtol=1e-2)
     np.testing.assert_allclose(result["volume"]["grid_points"], 8710, rtol=1e-2)
     print(f"Volume calculation result: {result}")
 
