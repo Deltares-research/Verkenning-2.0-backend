@@ -1,8 +1,8 @@
 name: Sync to DO repo
 
 on:
-  push:
-    branches: [ main ]
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -13,11 +13,12 @@ jobs:
     environment: deploy
 
     steps:
-      # 1️⃣ Checkout source repo (this repo, main branch)
-      - name: Checkout source repo
+      # 1️⃣ Checkout source repo at the published release tag
+      - name: Checkout source repo (release tag)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.release.tag_name }}
 
       # 2️⃣ Checkout target repo (DigitalOcean deploy repo)
       - name: Checkout target repo
@@ -51,5 +52,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Deploy sync from main" || echo "No changes to commit"
+          git commit -m "Deploy sync from release ${{ github.event.release.tag_name }}" || echo "No changes to commit"
           git push origin deploy --force
