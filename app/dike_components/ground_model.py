@@ -9,6 +9,7 @@ from scipy.ndimage import map_coordinates
 from scipy.spatial import Delaunay
 from shapely.geometry.polygon import Polygon
 from shapely.ops import unary_union
+from shapely.validation import make_valid
 import geopandas as gpd
 
 from ..AHN_raster_API import AHN4_API, DEFAULT_PDOK_WCS_URL
@@ -100,7 +101,8 @@ class GroundModel:
 
     def import_elevation_data(self):
         # Combine polygons to get full extent
-        combined_poly = unary_union(self.design_export_3d["geometry"])
+        valid_geoms = self.design_export_3d["geometry"].apply(make_valid)
+        combined_poly = unary_union(valid_geoms)
 
         # 2) Generate a global grid
         self.grid_pts_global = self.polygon_grid_2d_vectorized(combined_poly, cellsize=self.grid_size)
