@@ -38,7 +38,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3001",
-        "https://portal.wsrl.nl"
+        "https://portal.wsrl.nl",
+        "https://portaltest.wsrl.nl"
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
