@@ -33,14 +33,11 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
 
 app = FastAPI(title="Verkenning 2.0 Backend", version="1.0.0")
 
-# CORS configuration - restricted origins
+# CORS configuration - origins from ALLOWED_ORIGINS env var (comma-separated)
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3001")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3001",
-        "https://portal.wsrl.nl",
-        "https://portaltest.wsrl.nl"
-    ],
+    allow_origins=[origin.strip() for origin in allowed_origins.split(",")],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
