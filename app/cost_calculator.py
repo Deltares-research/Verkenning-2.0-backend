@@ -457,6 +457,7 @@ class InfrastructureCosts:
             'aanleggen_weg': self.aanleggen_weg.to_dict(),
             'verwijderen_fietspad': self.verwijderen_fietspad.to_dict(),
             'aanleggen_fietspad': self.aanleggen_fietspad.to_dict(),
+            'totale_BDBK_infrastructuur': self.totale_BDBK_infrastructuur.to_dict()
         }
         return data
 
