@@ -65,24 +65,40 @@ def find_structure_cost_from_catalog(structure_type: str, cost_catalog: KostenCa
             'd': get_price(cost_catalog, f'd_{structure_type}'),
             'z': get_price(cost_catalog, f'z_{structure_type}')}
 
-def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_houses=  0, reuse_clay_as_top=False):
 
+def modified_cost_computation(dike_model, dimensions, second_structure=None, nb_houses=0, reuse_clay_as_top=False):
     ground = dimensions['ground']
     structure = dimensions['structure']
     infrastructure = dimensions['infrastructure']
 
-    extra = 0 if 'extra' not in dimensions else dimensions['extra']
-
     cat = load_kosten_catalogus(eenheidsprijzen=str(path_cost), opslagfactoren=str(path_opslag_factor))
-
     calculator = CostCalculator(cat, dike_model.complexity)
 
     groundwork_cost = calculator.calc_direct_cost_ground_work(volumes=ground, reuse_clay_as_top=reuse_clay_as_top)
 
     infrastructure_cost = calculator.calc_direct_cost_infrastructure(road_area=infrastructure['Weg'], bike_path_area=infrastructure['Fietspad'])
 
-    structure_cost = calculator.calc_direct_cost_structure(vaklengte=structure['Vaklengte'], wandlengte=wandlengte, structure_type=structure['Type'], cost_function_parameters=find_structure_cost_from_catalog(structure['Type'], cat))
+    if second_structure is not None:
+        cost_function_pararams = {'c': get_price(cat, f"c_{second_structure['Type']}"),
+                                  'd': get_price(cat, f"d_{second_structure['Type']}"),
+                                  'z': get_price(cat, f"z_{second_structure['Type']}")
+                                  }
+        second_structure_cost = calculator.calc_direct_cost_structure(vaklengte=second_structure['Vaklengte'],
+                                                                      wandlengte=second_structure['Wandlengte'],
+                                                                      structure_type=second_structure['Type'],
+                                                                      cost_function_parameters=cost_function_pararams
+                                                                      )
+        if structure['Eenheidsprijs'] != 0:
+            structure['Type'] = f"{structure['Type']} en {second_structure['Type']}"
+        structure['Eenheidsprijs'] = (structure['Vaklengte'] * structure['Eenheidsprijs']) + second_structure_cost.totale_BDBK_constructie.value_excl_BTW
+        structure['Vaklengte'] = 1
+    structure_cost = StructureCosts(directe_bouwkosten=CostItem(quantity=structure['Vaklengte'],
+                                                                unit_cost=structure['Eenheidsprijs'],
+                                                                unit='m'
+                                                                )
+                                    )
 
+    extra = 0 if 'extra' not in dimensions else dimensions['extra']
     extra_cost = SummedCostItem(description="Extra kosten", value_excl_BTW=extra, value_incl_BTW=extra*1.21)
     
     total_construction_cost = calculator.calc_construction_costs(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk,
@@ -117,7 +133,11 @@ def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_house
     costs_summary = {"Directe kosten grondwerk": groundwork_cost.totale_BDBK_grondwerk.value_excl_BTW,
                     "Directe kosten constructies": structure_cost.totale_BDBK_constructie.value_excl_BTW,
                     "Directe kosten infrastructuur": infrastructure_cost.totale_BDBK_infrastructuur.value_excl_BTW,
-                    "Indirecte Bouwkosten": total_construction_cost.indirecte_bouwkosten.value_excl_BTW,
+                    "Directe niet-benoemde bouwkosten":
+                         total_construction_cost.directe_niet_benoemde_bouwkosten_grondwerk.value +
+                         total_construction_cost.directe_niet_benoemde_bouwkosten_constructie.value +
+                         total_construction_cost.directe_niet_benoemde_bouwkosten_infrastructuur.value,
+                    "Indirecte bouwkosten": total_construction_cost.indirecte_bouwkosten.value_excl_BTW,
                     "Engineeringkosten": engineering_cost.total_engineering_costs.value_excl_BTW,
                     "Overige bijkomende kosten": general_cost.total_general_costs.value_excl_BTW,
                     "Objectoverstijgende risicoreservering": risk_cost.value,
@@ -125,7 +145,31 @@ def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_house
                     }
     costs_summary = pd.DataFrame.from_dict(costs_summary, orient='index', columns=['Kosten excl. BTW'])
 
-    return costs_summary, full_cost_dict
+    new_dimensions = {
+        'ground': {
+            'V1b': groundwork_cost.afgraven_toplaag.quantity,
+            'V2b': groundwork_cost.afgraven_oud_materiaal.quantity,
+            'V3': groundwork_cost.hergebruik_toplaag.quantity + groundwork_cost.aanvullen_toplaag.quantity,
+            'V4': groundwork_cost.aanbrengen_nieuwe_kleilaag.quantity,
+            'V5': groundwork_cost.aanvullen_kern.quantity - groundwork_cost.afgraven_toplaag.quantity,
+            'full_AHN_surface': groundwork_cost.kosten_opruimen.quantity,
+            'envelop_AHN_surface': 0,  # niet gebruikt
+            'full_design_surface': groundwork_cost.profileren_nieuwe_toplaag.quantity,
+            'envelop_design_surface': groundwork_cost.profileren_dijkkern.quantity,
+            },
+        'structure': {
+            'type': structure['Type'],
+            'quantity': structure['Vaklengte'],
+            'unit_cost': structure['Eenheidsprijs']
+            },
+        'infrastructure': {
+            'Weg': infrastructure_cost.verwijderen_weg.quantity,
+            'Fietspad': infrastructure_cost.verwijderen_fietspad.quantity,
+            },
+        }
+
+    return costs_summary, full_cost_dict, new_dimensions
+
 
 def compute_incremental_volumes(vol_orig_to_A: dict, vol_orig_to_B: dict):
     """
@@ -177,14 +221,34 @@ def make_reinforcement_incremental(dimensions_first_increment: dict,
     incremental_reinforcement['extra'] = additional_costs
 
     #recompute the costs for the incremental reinforcement
-    increment_cost_summary, increment_costs_detailed = modified_cost_computation(DikeModel(complexity = complexity), incremental_reinforcement, reuse_clay_as_top=reuse_clay)
-    return increment_cost_summary, increment_costs_detailed
+    increment_cost_summary, increment_costs_detailed, increment_dimensions = (
+        modified_cost_computation(DikeModel(complexity=complexity),
+                                            dimensions=incremental_reinforcement,
+                                            second_structure=None,
+                                            nb_houses=nb_houses,
+                                            reuse_clay_as_top=reuse_clay
+                                  )
+    )
+    return increment_cost_summary, increment_costs_detailed, increment_dimensions
 
-def compute_incremental_costs(alternative_order: list[str], dimensions: dict[str, dict], dike: DikeModel, reuse_clay = True, complexity = 'gemiddelde maatregel', extra_costs = 0):
+
+def compute_incremental_costs(alternative_order: list[str],
+                              dimensions: dict[str, dict],
+                              dike: DikeModel,
+                              reuse_clay: bool=True,
+                              complexity: str='gemiddelde maatregel',
+                              extra_costs: float=0.0
+                              ) -> tuple:
     incremental_cost_summaries = {}
     incremental_detailed_costs = {}
+    incremental_dimensions = {}
+
     #compute cost of first alternative in the order
-    incremental_cost_summaries[alternative_order[0]], incremental_detailed_costs[alternative_order[0]] = modified_cost_computation(dike, dimensions[alternative_order[0]])
+    (incremental_cost_summaries[alternative_order[0]],
+     incremental_detailed_costs[alternative_order[0]],
+     incremental_dimensions[alternative_order[0]]
+     ) = modified_cost_computation(dike, dimensions[alternative_order[0]])
+
     print(f"Kosten van {alternative_order[0]}:")
     print(f"€{incremental_cost_summaries[alternative_order[0]]['Kosten excl. BTW'].sum():,.0f}")
     print("\n")
@@ -192,11 +256,17 @@ def compute_incremental_costs(alternative_order: list[str], dimensions: dict[str
     for i in range(len(alternative_order)-1):
         alt_1 = alternative_order[i]
         alt_2 = alternative_order[i+1]
-        incremental_cost_summaries[f"{alt_1} to {alt_2}"], incremental_detailed_costs[f"{alt_1} to {alt_2}"] = make_reinforcement_incremental(dimensions[alt_1], dimensions[alt_2], complexity = complexity, reuse_clay=reuse_clay, additional_costs=extra_costs)
+        (incremental_cost_summaries[f"{alt_1} to {alt_2}"],
+         incremental_detailed_costs[f"{alt_1} to {alt_2}"],
+         incremental_dimensions[f"{alt_1} to {alt_2}"]
+         ) = make_reinforcement_incremental(dimensions[alt_1], dimensions[alt_2],
+                                            complexity=complexity, reuse_clay=reuse_clay,
+                                            additional_costs=extra_costs
+                                            )
+
         #print summarized incremental costs per incremental step
         print(f"Incrementele kosten van {alt_1} naar {alt_2}:")
         print(f"€{incremental_cost_summaries[f'{alt_1} to {alt_2}']['Kosten excl. BTW'].sum():,.0f}")
         print("\n")
 
-
-    return incremental_cost_summaries, incremental_detailed_costs
+    return incremental_cost_summaries, incremental_detailed_costs, incremental_dimensions
