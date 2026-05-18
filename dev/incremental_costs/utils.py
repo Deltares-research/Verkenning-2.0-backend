@@ -3,26 +3,16 @@ import pandas as pd
 from pathlib import Path
 import copy
 
-from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Union
-import math
-import matplotlib.pyplot as plt
-import numpy as np
-
-#switch dir and load packages
-import os
-# os.chdir(r"C:\Users\tao\Local_Documents\GitHub\Verkenning-2.0-backend")
 from app.dike_components.dike_model import DikeModel
-from app.cost_calculator import CostCalculator, DirectCostGroundWork, StructureCosts, InfrastructureCosts, SummedCostItem
-from app.unit_costs_and_surcharges import load_kosten_catalogus, get_price
-from app.cost_calculator import CostItem, SummedCostItem
+from app.cost_calculator import CostCalculator, StructureCosts, CostItem, SummedCostItem
+from app.unit_costs_and_surcharges import KostenCatalogus, load_kosten_catalogus, get_price
 
 
 path_cost = Path("app/datasets/eenheidsprijzen.json")
 path_opslag_factor = Path("app/datasets/opslagfactoren.json")   
 
 
-def get_dimensions_dict_from_df(df: pd.DataFrame) -> Dict[str, float]:
+def get_dimensions_dict_from_df(df: pd.DataFrame) -> dict:
     #set Kostenpost as index
     df_modified = df.set_index('Kostenpost')
 
@@ -37,7 +27,6 @@ def get_dimensions_dict_from_df(df: pd.DataFrame) -> Dict[str, float]:
         'full_design_surface': df_modified.loc['Profieleren nieuwe graslaag', 'Hoeveelheid'],
         'envelop_design_surface': df_modified.loc['Profieleren dijkkern', 'Hoeveelheid']
     }
-    road_surface = df_modified.loc['Verwijderen weg', 'Hoeveelheid']
     
     #get (if they exist) the vaklengte and unit_costs of the structure 
     #check if Heavescherm, Damwand onverankerd or Damwand verankerd are in the df index
@@ -58,10 +47,9 @@ def get_dimensions_dict_from_df(df: pd.DataFrame) -> Dict[str, float]:
         structure_vaklengte = 0.0
         structure_unit_cost = 0.0
 
-
     structure = {'Type': structure_type,
                  'Vaklengte': structure_vaklengte,
-                    'Eenheidsprijs': structure_unit_cost,
+                 'Eenheidsprijs': structure_unit_cost,
     }
 
     infrastructure = {
@@ -71,12 +59,12 @@ def get_dimensions_dict_from_df(df: pd.DataFrame) -> Dict[str, float]:
 
     return {'ground': ground, 'structure': structure, 'infrastructure': infrastructure}
 
-def find_structure_cost_from_catalog(structure_type: str, cost_catalog: dict) -> float:
-    return {'c': get_price(cost_catalog, f'c_{structure_type}'),
-    'd': get_price(cost_catalog, f'd_{structure_type}'),
-    'z': get_price(cost_catalog, f'z_{structure_type}')}
 
-#modified cost computation
+def find_structure_cost_from_catalog(structure_type: str, cost_catalog: KostenCatalogus) -> dict:
+    return {'c': get_price(cost_catalog, f'c_{structure_type}'),
+            'd': get_price(cost_catalog, f'd_{structure_type}'),
+            'z': get_price(cost_catalog, f'z_{structure_type}')}
+
 def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_houses=  0, reuse_clay_as_top=False):
 
     ground = dimensions['ground']
@@ -97,31 +85,35 @@ def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_house
 
     extra_cost = SummedCostItem(description="Extra kosten", value_excl_BTW=extra, value_incl_BTW=extra*1.21)
     
-    total_construction_cost = calculator.calc_construction_costs(groundwork_cost = groundwork_cost.totale_BDBK_grondwerk,
-                                                                 structure_cost = structure_cost.totale_BDBK_constructie + extra_cost,
+    total_construction_cost = calculator.calc_construction_costs(groundwork_cost=groundwork_cost.totale_BDBK_grondwerk,
+                                                                 structure_cost=structure_cost.totale_BDBK_constructie + extra_cost,
                                                                  infrastructure_cost=infrastructure_cost.totale_BDBK_infrastructuur)
-    engineering_cost = calculator.calc_all_engineering_costs(
-        construction_cost=total_construction_cost.totale_bouwkosten)
+
+    engineering_cost = calculator.calc_all_engineering_costs(construction_cost=total_construction_cost.totale_bouwkosten)
 
     general_cost = calculator.calc_general_costs(construction_cost=total_construction_cost.totale_bouwkosten)
 
     _investering_cost = total_construction_cost.totale_bouwkosten + engineering_cost.total_engineering_costs + general_cost.total_general_costs
 
-    risk_cost = calculator.calc_risk_cost(investering_cost=_investering_cost,
-                                            construction_costs=total_construction_cost)
+    risk_cost = calculator.calc_risk_cost(investering_cost=_investering_cost, construction_costs=total_construction_cost)
+
     real_estate_costs = calculator.calc_real_estate_costs(nb_houses=nb_houses)
 
-    full_cost_dict = {"Bouwkosten":
-                {"Directe Bouwkosten": {
-                    "Directe kosten grondwerk": groundwork_cost.to_dict(),
-                    "Directe kosten constructies": structure_cost.to_dict(),
-                    "Directe kosten infrastructuur": infrastructure_cost.to_dict(),},
-                "Indirecte Bouwkosten": total_construction_cost.to_dict()},
-            "Engineeringkosten" : engineering_cost.to_dict(),  
-            "Overige bijkomende kosten": general_cost.to_dict(), 
-                "Risicoreservering": risk_cost.to_dict(),
-                "Vastgoedkosten": real_estate_costs.to_dict(),
+    full_cost_dict = \
+        {"Bouwkosten":
+            {"Directe benoemde bouwkosten": {
+                "Directe kosten grondwerk": groundwork_cost.to_dict(),
+                "Directe kosten constructies": structure_cost.to_dict(),
+                "Directe kosten infrastructuur": infrastructure_cost.to_dict()
+                },
+            "Indirecte bouwkosten": total_construction_cost.to_dict()
+            },
+            "Engineeringkosten" : engineering_cost.to_dict(),
+            "Overige bijkomende kosten": general_cost.to_dict(),
+            "Risicoreservering": risk_cost.to_dict(),
+            "Vastgoedkosten": real_estate_costs.to_dict(),
         }
+
     costs_summary = {"Directe kosten grondwerk": groundwork_cost.totale_BDBK_grondwerk.value_excl_BTW,
                     "Directe kosten constructies": structure_cost.totale_BDBK_constructie.value_excl_BTW,
                     "Directe kosten infrastructuur": infrastructure_cost.totale_BDBK_infrastructuur.value_excl_BTW,
@@ -131,12 +123,11 @@ def modified_cost_computation(dike_model, dimensions, wandlengte=  0.0, nb_house
                     "Objectoverstijgende risicoreservering": risk_cost.value,
                     "Vastgoedkosten": real_estate_costs.total_real_estate_costs.value_excl_BTW
                     }
-    #make dataframe from costs summary with keys as index and column header Kosten excl. BTW
     costs_summary = pd.DataFrame.from_dict(costs_summary, orient='index', columns=['Kosten excl. BTW'])
 
     return costs_summary, full_cost_dict
 
-def compute_incremental_volumes(vol_orig_to_A, vol_orig_to_B):
+def compute_incremental_volumes(vol_orig_to_A: dict, vol_orig_to_B: dict):
     """
     vol_orig_to_A and vol_orig_to_B are dicts with the same keys as your 'volumes' dict.
     Returns the incremental volumes for the A→B step.
@@ -169,7 +160,14 @@ def compute_incremental_volumes(vol_orig_to_A, vol_orig_to_B):
         'envelop_design_surface': B['envelop_design_surface'],
     }
 
-def make_reinforcement_incremental(dimensions_first_increment, dimensions_second_increment, complexity = 'gemiddelde maatregel', additional_costs = 0, reuse_clay = True):
+
+def make_reinforcement_incremental(dimensions_first_increment: dict,
+                                   dimensions_second_increment: dict,
+                                   complexity: str='gemiddelde maatregel',
+                                   nb_houses: int=0,
+                                   additional_costs: float=0.0,
+                                   reuse_clay: bool=True
+                                   ) -> tuple:
 
     #copy second increment and adjust volumes
     incremental_reinforcement = copy.deepcopy(dimensions_second_increment)
