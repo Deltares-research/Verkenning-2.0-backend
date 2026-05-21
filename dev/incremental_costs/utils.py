@@ -34,14 +34,14 @@ def get_dimensions_dict_from_df(df: pd.DataFrame) -> dict:
         structure_type = 'Heavescherm'
         structure_vaklengte = df_modified.loc['Heavescherm', 'Hoeveelheid']
         structure_unit_cost = df_modified.loc['Heavescherm', 'Eenheidsprijs']
-    elif 'Damwand onverankerd' in df_modified.index:
-        structure_type = 'Damwand onverankerd'
-        structure_vaklengte = df_modified.loc['Damwand onverankerd', 'Hoeveelheid']
-        structure_unit_cost = df_modified.loc['Damwand onverankerd', 'Eenheidsprijs']
-    elif 'Damwand verankerd' in df_modified.index:
-        structure_type = 'Damwand verankerd'
-        structure_vaklengte = df_modified.loc['Damwand verankerd', 'Hoeveelheid']
-        structure_unit_cost = df_modified.loc['Damwand verankerd', 'Eenheidsprijs']
+    elif 'Onverankerde damwand' in df_modified.index:
+        structure_type = 'Onverankerde damwand'
+        structure_vaklengte = df_modified.loc['Onverankerde damwand', 'Hoeveelheid']
+        structure_unit_cost = df_modified.loc['Onverankerde damwand', 'Eenheidsprijs']
+    elif 'Verankerde damwand' in df_modified.index:
+        structure_type = 'Verankerde damwand'
+        structure_vaklengte = df_modified.loc['Verankerde damwand', 'Hoeveelheid']
+        structure_unit_cost = df_modified.loc['Verankerde damwand', 'Eenheidsprijs']
     else:
         structure_type = 'Geen constructie'
         structure_vaklengte = 0.0
