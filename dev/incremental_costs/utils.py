@@ -218,7 +218,7 @@ def make_reinforcement_incremental(dimensions_first_increment: dict,
     incremental_reinforcement['ground'] = compute_incremental_volumes(dimensions_first_increment['ground'], dimensions_second_increment['ground'])
 
     #add any additional costs
-    incremental_reinforcement['extra'] = additional_costs
+    incremental_reinforcement['extra'] = dimensions_second_increment['extra'] if 'extra' in dimensions_second_increment else 0
 
     #recompute the costs for the incremental reinforcement
     increment_cost_summary, increment_costs_detailed, increment_dimensions = (
