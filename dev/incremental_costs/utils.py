@@ -2,6 +2,9 @@ from __future__ import annotations
 import pandas as pd
 from pathlib import Path
 import copy
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
 from app.dike_components.dike_model import DikeModel
 from app.cost_calculator import CostCalculator, StructureCosts, CostItem, SummedCostItem
@@ -270,3 +273,47 @@ def compute_incremental_costs(alternative_order: list[str],
         print("\n")
 
     return incremental_cost_summaries, incremental_detailed_costs, incremental_dimensions
+
+def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon = 150):
+
+    #make sure total_horizon is longer than 35 years
+    if total_horizon <= 35:
+        raise ValueError("Total horizon should be longer than 35 years for the given discount rates.")
+    
+    discount_rate_until_35 = 0.022
+    discount_rate_after_35 = 0.014
+    #determine the discount factorsfor a horizon of 150 years with a step of 1 years, using the discount rate until 35 years and the discount rate after 35 years (also compute for extra years to be sure)
+    discount_factors = [(1+ discount_rate_until_35) ** t if t <= 35 else (1+ discount_rate_after_35) ** (t-35) * (1+ discount_rate_until_35) ** 35 for t in range(0, 301, 1)]
+    
+    lcc_per_measure = {}
+    for measure, (cost, year, lifespan) in incremental_costs_per_measure.items():
+        if year - start_year + lifespan > total_horizon:
+            #if the lifespan of the measure exceeds the total horizon, we only consider the costs until the total horizon
+            lcc_per_measure[measure] = cost / discount_factors[year- start_year]
+            #determine factor of investment that is part of the considered horizon
+            factor = ((1- (1+discount_rate_after_35) ** -(year - start_year))/(1- (1+discount_rate_after_35) ** -(year - start_year + lifespan)))
+            lcc_per_measure[measure] *= factor
+        else:
+            lcc_per_measure[measure] = cost / discount_factors[year - start_year]
+        #if the lifespan of the measure reaches b
+    return lcc_per_measure
+
+def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levenscycluskosten'):
+
+    #a bit different, where the years 2025 etc, are numeric values such that they are shown as a timeline, and the bars are shown at the year of implementation. For measures that are increments, show the bar starting from the year of the previous measure. For example, for "Grondversterking 2025 to Grondversterking 2075", show the bar starting from 2025 and ending at 2075.
+    t_range = range(2025, 2025+total_horizon+1, 25)
+    fig, ax = plt.subplots(figsize=(8,3))
+    ax.bar(years, undiscounted_costs, color=sns.color_palette()[0], alpha=0.5, width=2, label='Investeringskosten')
+    ax.bar(years, lcc_values, color=sns.color_palette()[1], width=5, label='Levenscycluskosten (LCC)')
+
+    ax.set_xlabel('Jaar')
+    ax.set_ylabel('Kosten (M€)')
+    ax.set_title(title)
+    ax.legend()
+    ax.set_xticks(t_range) 
+    ax.set_ylim(0, np.ceil(max(undiscounted_costs)/1e6)*1e6)
+    ax.set_yticklabels([f"{y/1e6:.1f}" for y in ax.get_yticks()])
+
+    #add summed LCC value as text in plot at left top corner
+    total_lcc = sum(lcc_values)
+    ax.text(2025, ax.get_ylim()[1]*0.92, f'Totale LCC: €{total_lcc/1e6:.1f}M', fontsize=12, fontweight='bold')
