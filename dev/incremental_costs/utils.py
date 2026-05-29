@@ -298,7 +298,7 @@ def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon 
         #if the lifespan of the measure reaches b
     return lcc_per_measure
 
-def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levenscycluskosten'):
+def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levenscycluskosten', y_top_lim = None):
 
     #a bit different, where the years 2025 etc, are numeric values such that they are shown as a timeline, and the bars are shown at the year of implementation. For measures that are increments, show the bar starting from the year of the previous measure. For example, for "Grondversterking 2025 to Grondversterking 2075", show the bar starting from 2025 and ending at 2075.
     t_range = range(2025, 2025+total_horizon+1, 25)
@@ -309,11 +309,24 @@ def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levens
     ax.set_xlabel('Jaar')
     ax.set_ylabel('Kosten (M€)')
     ax.set_title(title)
-    ax.legend()
     ax.set_xticks(t_range) 
-    ax.set_ylim(0, np.ceil(max(undiscounted_costs)/1e6)*1e6)
+    if y_top_lim is not None:
+        ax.set_ylim(0, y_top_lim)
+    else:
+        ax.set_ylim(0, np.ceil(max(undiscounted_costs)/1e6)*1e6)
     ax.set_yticklabels([f"{y/1e6:.1f}" for y in ax.get_yticks()])
+    ax.legend(bbox_to_anchor=(0.8, 1), loc='upper left')
 
     #add summed LCC value as text in plot at left top corner
     total_lcc = sum(lcc_values)
     ax.text(2025, ax.get_ylim()[1]*0.92, f'Totale LCC: €{total_lcc/1e6:.1f}M', fontsize=12, fontweight='bold')
+
+def recategorize_cost(cost_df_in: pd.DataFrame) -> pd.DataFrame:
+    #reorder the lines in the df_all_costs_with_increments dataframe such that Indirecte bouwkosten, engineeringkosten, overige bijkomende kosten en objectoverstijgende risicoreservering are summed to "Indirecte en bijkomende kosten (engineering, risico e.d.)". Keep others the same.
+    cost_df_in.loc['Indirecte en bijkomende kosten (engineering, risico e.d.)'] = cost_df_in.loc['Indirecte bouwkosten'] + cost_df_in.loc['Engineeringkosten'] + cost_df_in.loc['Overige bijkomende kosten'] + cost_df_in.loc['Objectoverstijgende risicoreservering']
+    cost_df_in = cost_df_in.drop(['Indirecte bouwkosten', 'Engineeringkosten', 'Overige bijkomende kosten', 'Objectoverstijgende risicoreservering'])
+    #rename "Directe kosten grondwerk", "Directe kosten constructies", "Directe kosten infrastructuur" to "Directe bouwkosten (grondwerk)", "Directe bouwkosten (constructies)", "Directe bouwkosten (infrastructuur)". And Directe niet-bouwkosten to "Directe niet-benoemde bouwkosten" to "Directe bouwkosten (niet-benoemd)" 
+    cost_df_in = cost_df_in.rename(index={'Directe kosten grondwerk': 'Directe bouwkosten (grondwerk)', 'Directe kosten constructies': 'Directe bouwkosten (constructies)', 'Directe kosten infrastructuur': 'Directe bouwkosten (infrastructuur)', 'Directe niet-benoemde bouwkosten': 'Directe bouwkosten (niet-benoemd)'})
+    #order the index: Directe kosten, indirecte kosten and then vastgoed
+    cost_df_in = cost_df_in.reindex(['Directe bouwkosten (grondwerk)', 'Directe bouwkosten (constructies)', 'Directe bouwkosten (infrastructuur)', 'Directe bouwkosten (niet-benoemd)', 'Indirecte en bijkomende kosten (engineering, risico e.d.)', 'Vastgoedkosten'])
+    return cost_df_in
