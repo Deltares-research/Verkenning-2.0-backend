@@ -69,7 +69,12 @@ def find_structure_cost_from_catalog(structure_type: str, cost_catalog: KostenCa
             'z': get_price(cost_catalog, f'z_{structure_type}')}
 
 
-def modified_cost_computation(dike_model, dimensions, second_structure=None, nb_houses=0, reuse_clay_as_top=False):
+def modified_cost_computation(dike_model,
+                              dimensions,
+                              second_structure=None,
+                              nb_houses: int=0,
+                              reuse_clay_as_top: bool=False
+                              ) -> tuple:
     ground = dimensions['ground']
     structure = dimensions['structure']
     infrastructure = dimensions['infrastructure']
@@ -212,7 +217,7 @@ def make_reinforcement_incremental(dimensions_first_increment: dict,
                                    dimensions_second_increment: dict,
                                    complexity: str='gemiddelde maatregel',
                                    nb_houses: int=0,
-                                   additional_costs: float=0.0,
+                                   additional_costs: float | int=0.0,
                                    reuse_clay: bool=True
                                    ) -> tuple:
 
@@ -253,8 +258,7 @@ def compute_incremental_costs(alternative_order: list[str],
      ) = modified_cost_computation(dike, dimensions[alternative_order[0]])
 
     print(f"Kosten van {alternative_order[0]}:")
-    print(f"€{incremental_cost_summaries[alternative_order[0]]['Kosten excl. BTW'].sum():,.0f}")
-    print("\n")
+    print(f"€{incremental_cost_summaries[alternative_order[0]]['Kosten excl. BTW'].sum():,.0f}\n")
 
     for i in range(len(alternative_order)-1):
         alt_1 = alternative_order[i]
@@ -269,13 +273,13 @@ def compute_incremental_costs(alternative_order: list[str],
 
         #print summarized incremental costs per incremental step
         print(f"Incrementele kosten van {alt_1} naar {alt_2}:")
-        print(f"€{incremental_cost_summaries[f'{alt_1} to {alt_2}']['Kosten excl. BTW'].sum():,.0f}")
-        print("\n")
+        print(f"€{incremental_cost_summaries[f'{alt_1} to {alt_2}']['Kosten excl. BTW'].sum():,.0f}\n")
 
     return incremental_cost_summaries, incremental_detailed_costs, incremental_dimensions
 
-def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon = 150):
-    #incremental_costs_per_measure is a dict with keys as measure names and values as tuples of (cost, year, lifespan)
+
+def compute_lcc(incremental_costs_per_measure, start_year: int=2025, total_horizon: int=150) -> dict:
+
     #make sure total_horizon is longer than 35 years
     if total_horizon <= 35:
         raise ValueError("Total horizon should be longer than 35 years for the given discount rates.")
@@ -283,7 +287,7 @@ def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon 
     discount_rate_until_35 = 0.022
     discount_rate_after_35 = 0.014
     #determine the discount factorsfor a horizon of 150 years with a step of 1 years, using the discount rate until 35 years and the discount rate after 35 years (also compute for extra years to be sure)
-    discount_factors = [(1+ discount_rate_until_35) ** t if t <= 35 else (1+ discount_rate_after_35) ** (t-35) * (1+ discount_rate_until_35) ** 35 for t in range(0, 301, 1)]
+    discount_factors = [(1 + discount_rate_until_35) ** t if t <= 35 else (1 + discount_rate_after_35) ** (t-35) * (1 + discount_rate_until_35) ** 35 for t in range(0, 301, 1)]
     
     lcc_per_measure = {}
     for measure, (cost, year, lifespan) in incremental_costs_per_measure.items():
@@ -298,7 +302,14 @@ def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon 
         #if the lifespan of the measure reaches b
     return lcc_per_measure
 
-def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levenscycluskosten', y_top_lim = None):
+
+def lcc_plot(undiscounted_costs,
+             lcc_values: list[float | int],
+             years: list[int],
+             total_horizon: int,
+             title: str='Levenscycluskosten',
+             y_top_lim: int | float | None=None
+             ) -> None:
 
     #a bit different, where the years 2025 etc, are numeric values such that they are shown as a timeline, and the bars are shown at the year of implementation. For measures that are increments, show the bar starting from the year of the previous measure. For example, for "Grondversterking 2025 to Grondversterking 2075", show the bar starting from 2025 and ending at 2075.
     t_range = range(2025, 2025+total_horizon+1, 25)
@@ -320,6 +331,7 @@ def lcc_plot(undiscounted_costs, lcc_values, years, total_horizon, title='Levens
     #add summed LCC value as text in plot at left top corner
     total_lcc = sum(lcc_values)
     ax.text(2025, ax.get_ylim()[1]*0.92, f'Totale LCC: €{total_lcc/1e6:.1f}M', fontsize=12, fontweight='bold')
+
 
 def recategorize_cost(cost_df_in: pd.DataFrame) -> pd.DataFrame:
     #reorder the lines in the df_all_costs_with_increments dataframe such that Indirecte bouwkosten, engineeringkosten, overige bijkomende kosten en objectoverstijgende risicoreservering are summed to "Indirecte en bijkomende kosten (engineering, risico e.d.)". Keep others the same.
