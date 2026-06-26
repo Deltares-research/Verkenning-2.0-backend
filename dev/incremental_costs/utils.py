@@ -275,7 +275,7 @@ def compute_incremental_costs(alternative_order: list[str],
     return incremental_cost_summaries, incremental_detailed_costs, incremental_dimensions
 
 def compute_lcc(incremental_costs_per_measure, start_year = 2025, total_horizon = 150):
-
+    #incremental_costs_per_measure is a dict with keys as measure names and values as tuples of (cost, year, lifespan)
     #make sure total_horizon is longer than 35 years
     if total_horizon <= 35:
         raise ValueError("Total horizon should be longer than 35 years for the given discount rates.")
@@ -330,3 +330,4 @@ def recategorize_cost(cost_df_in: pd.DataFrame) -> pd.DataFrame:
     #order the index: Directe kosten, indirecte kosten and then vastgoed
     cost_df_in = cost_df_in.reindex(['Directe bouwkosten (grondwerk)', 'Directe bouwkosten (constructies)', 'Directe bouwkosten (infrastructuur)', 'Directe bouwkosten (niet-benoemd)', 'Indirecte en bijkomende kosten (engineering, risico e.d.)', 'Vastgoedkosten'])
     return cost_df_in
+
