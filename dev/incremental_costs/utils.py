@@ -245,7 +245,8 @@ def compute_incremental_costs(alternative_order: list[str],
                               dike: DikeModel,
                               reuse_clay: bool=True,
                               complexity: str='gemiddelde maatregel',
-                              extra_costs: float=0.0
+                              extra_costs: float=0.0,
+                              print_output: bool=True,
                               ) -> tuple:
     incremental_cost_summaries = {}
     incremental_detailed_costs = {}
@@ -256,9 +257,9 @@ def compute_incremental_costs(alternative_order: list[str],
      incremental_detailed_costs[alternative_order[0]],
      incremental_dimensions[alternative_order[0]]
      ) = modified_cost_computation(dike, dimensions[alternative_order[0]])
-
-    print(f"Kosten van {alternative_order[0]}:")
-    print(f"€{incremental_cost_summaries[alternative_order[0]]['Kosten excl. BTW'].sum():,.0f}\n")
+    if print_output:
+        print(f"Kosten van {alternative_order[0]}:")
+        print(f"€{incremental_cost_summaries[alternative_order[0]]['Kosten excl. BTW'].sum():,.0f}\n")
 
     for i in range(len(alternative_order)-1):
         alt_1 = alternative_order[i]
@@ -272,8 +273,9 @@ def compute_incremental_costs(alternative_order: list[str],
                                             )
 
         #print summarized incremental costs per incremental step
-        print(f"Incrementele kosten van {alt_1} naar {alt_2}:")
-        print(f"€{incremental_cost_summaries[f'{alt_1} to {alt_2}']['Kosten excl. BTW'].sum():,.0f}\n")
+        if print_output:
+            print(f"Incrementele kosten van {alt_1} naar {alt_2}:")
+            print(f"€{incremental_cost_summaries[f'{alt_1} to {alt_2}']['Kosten excl. BTW'].sum():,.0f}\n")
 
     return incremental_cost_summaries, incremental_detailed_costs, incremental_dimensions
 
